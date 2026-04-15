@@ -11,6 +11,17 @@ from app.core.responses import error_response
 # Routers
 from app.modules.auth.router import router as auth_router
 from app.modules.student.router import router as student_router
+from app.modules.assessment.router import router as assessment_router
+from app.modules.risk_engine.router import router as risk_router
+from app.modules.counselor.router import router as counselor_router
+from app.modules.allocation.router import router as allocation_router
+from app.modules.session.router import router as session_router
+from app.modules.dashboard.router import counselor_router as dash_c_router
+from app.modules.dashboard.router import student_router as dash_s_router
+from app.modules.dashboard.router import admin_router as dash_a_router
+from app.modules.audit.router import router as audit_router
+from app.modules.chat.router import router as chat_router
+from app.modules.chat.socket import socket_app
 
 log = structlog.get_logger(__name__)
 
@@ -70,13 +81,29 @@ def create_app() -> FastAPI:
     prefix = "/api/v1"
     app.include_router(auth_router, prefix=prefix)
     app.include_router(student_router, prefix=prefix)
+    app.include_router(assessment_router, prefix=prefix)
+    app.include_router(risk_router, prefix=prefix)
+    app.include_router(counselor_router, prefix=prefix)
+    app.include_router(allocation_router, prefix=prefix)
+    app.include_router(session_router, prefix=prefix)
+    
+    # Dashboards
+    app.include_router(dash_c_router, prefix=prefix)
+    app.include_router(dash_s_router, prefix=prefix)
+    app.include_router(dash_a_router, prefix=prefix)
+
+    # Chat & Audit
+    app.include_router(chat_router, prefix=prefix)
+    app.include_router(audit_router, prefix=prefix)
 
     # Health check
     @app.get("/health", tags=["System"])
     async def health():
         return {"status": "ok", "version": settings.APP_VERSION}
 
-    return app
+    # Mount Socket.IO to /socket.io at the root level (must happen after other routes)
+    app.mount("/socket.io", socket_app)
 
+    return app
 
 app = create_app()

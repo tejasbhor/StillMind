@@ -1,6 +1,54 @@
 version: "3.9"
 
 services:
+  caddy:
+    image: caddy:2-alpine
+    container_name: stillmind_caddy
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile
+      - caddy_data:/data
+      - caddy_config:/config
+    depends_on:
+      - frontend
+      - backend
+
+  frontend:
+    build:
+      context: .
+      dockerfile: apps/web/Dockerfile
+    container_name: stillmind_frontend
+    restart: unless-stopped
+    environment:
+      - NODE_ENV=production
+      - NEXT_PUBLIC_API_URL=http://localhost/api/v1
+    ports:
+      - "3000:3000"
+    depends_on:
+      - backend
+
+  backend:
+    build:
+      context: apps/api
+      dockerfile: Dockerfile
+    container_name: stillmind_backend
+    restart: unless-stopped
+    env_file:
+      - apps/api/.env
+    environment:
+      - DATABASE_URL=postgresql+asyncpg://stillmind:stillmind_secret@db:5432/stillmind
+      - REDIS_URL=redis://redis:6379/0
+    ports:
+      - "8000:8000"
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+
   db:
     image: postgres:16-alpine
     container_name: stillmind_db
@@ -33,14 +81,8 @@ services:
       timeout: 5s
       retries: 5
 
-  mailhog:
-    image: mailhog/mailhog:latest
-    container_name: stillmind_mailhog
-    restart: unless-stopped
-    ports:
-      - "1025:1025"   # SMTP
-      - "8025:8025"   # Web UI
-
 volumes:
   postgres_data:
   redis_data:
+  caddy_data:
+  caddy_config:

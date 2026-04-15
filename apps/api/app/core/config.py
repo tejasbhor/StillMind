@@ -35,6 +35,7 @@ class Settings(BaseSettings):
     SMTP_PASSWORD: str = ""
     SMTP_FROM_EMAIL: str = "noreply@stillmind.edu"
     SMTP_FROM_NAME: str = "StillMind"
+    SMTP_USE_TLS: bool = True
 
     # CORS
     CORS_ORIGINS: List[str] = ["http://localhost:3000"]

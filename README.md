@@ -1,70 +1,66 @@
-# StillMind
+# StillMind Platform 🧠
 
-> Mental Health Triage & Resource Allocation System — v1.0
+**StillMind** is a rule-based, explainable mental health triage and resource allocation platform built for educational institutions. The platform normalizes student assessments, computes Composite Risk Indices (CRI), fairly prioritizes waiting students, and intelligently assigns limited counseling slots. 
 
-StillMind is a rule-based, explainable mental health triage platform for educational institutions. It collects standardized clinical assessments, computes a Composite Risk Index (CRI), prioritizes students fairly, and allocates limited counseling slots to those who need them most — with a human counselor always in the decision loop.
+It is designed with three core principles:
+1. **Explainability over Black Box**: No hidden AI decisions. Every risk level requires absolute clinical traceability.
+2. **Human-in-the-Loop**: Counselors receive smart capacity-matched queues, but retain ultimate override authority over decisions.
+3. **Absolute Privacy**: Strict Role-Based Access Control (RBAC) ensuring Admin, Counselor, and Student boundaries.
 
-## Stack
+---
 
-| Layer | Technology |
-|---|---|
-| Frontend | Next.js 15 + TypeScript + Tailwind CSS v4 |
-| Backend | FastAPI (Python) — async SQLAlchemy, Pydantic, Alembic |
-| Database | PostgreSQL 16 |
-| Queue/Cache | Redis 7 + ARQ |
-| Real-time Chat | Socket.IO (python-socketio) |
-| Email | SMTP (MailHog dev / SendGrid prod) |
+## 🏗 System Architecture (CIVICLENS production pattern)
 
-## Quick Start
+- **Frontend**: Next.js 15 App Router + TailwindCSS (Multi-stage containerized `standalone` output)
+- **Backend API**: FastAPI (Python 3.12) + `uv` + Pydantic (Modular Monolith)
+- **Database**: PostgreSQL 16 (Relational schemas + JSONB explainability vectors)
+- **Async Queueing**: Redis + ARQ (Async Background Tasks)
+- **Reverse Proxy**: Caddy (Zero-config SSL & internal API routing)
+- **Native Chat**: ASGI Native `python-socketio` framework
+
+## 🚀 Getting Started (Docker / OCI Deploy)
+
+This project has been fully dockerized for instant scaling across environments. 
 
 ### Prerequisites
-- Docker & Docker Compose
-- Python 3.12+ with `uv`
-- Node.js 20+ with `pnpm`
+- Docker Engine & Docker Compose
 
-### 1. Start infrastructure
-
+### 1. Boot up the Container Stack
 ```bash
-docker-compose up -d
+docker compose up -d --build
+```
+This commands spins up:
+1. `caddy` (Proxy manager on port 80/443)
+2. `frontend` (Next.js Application)
+3. `backend` (FastAPI JSON REST API)
+4. `db` (Postgres Database)
+5. `redis` (KV Store for Queues / Sessions)
+
+### 2. Run Database Migrations
+Once the `backend` and `db` are healthy, apply the latest Alembic schema definitions:
+```bash
+docker compose exec backend uv run alembic upgrade head
 ```
 
-### 2. Backend
-
+### 3. Seed Default Test Data
+Populate the platform with testing accounts across all three RBAC scopes (Student, Counselor, Admin):
 ```bash
-cd apps/api
-uv sync
-uv run alembic upgrade head
-uv run uvicorn app.main:app --reload --port 8000
+docker compose exec backend uv run python scripts/seed_all.py
 ```
+*(Check the script file for default credentials).*
 
-### 3. Frontend
+---
 
-```bash
-cd apps/web
-pnpm install
-pnpm dev
-```
+## 📚 API Contracts & Documentation
+Once the Docker stack is running, the interactive OpenAPI JSON endpoints are automatically hosted via Swagger UI at:
+👉 **[http://localhost/api/v1/docs](http://localhost/api/v1/docs)**
 
-### 4. Services
+### Core Monolith Sub-Domains
+* `/api/v1/auth/*`
+* `/api/v1/students/me/*`
+* `/api/v1/counselors/me/*`
+* `/api/v1/admin/*`
+* `/socket.io/*` (Real-time communications)
 
-| Service | URL |
-|---|---|
-| Frontend | http://localhost:3000 |
-| Backend API | http://localhost:8000 |
-| API Docs | http://localhost:8000/docs |
-| MailHog UI | http://localhost:8025 |
-
-## Roles
-
-| Role | Route | Access |
-|---|---|---|
-| Student | `/dashboard` | Own assessments, appointments, progress, chat |
-| Counselor | `/counselor` | Priority queue, sessions, case notes |
-| Admin | `/admin` | System metrics, config, audit logs |
-
-## Four Foundational Principles
-
-1. **Explainability over Black Box** — every decision answers "Why?"
-2. **Human-in-the-Loop** — system recommends; counselors decide
-3. **Resource Optimization** — maximize impact within slot constraints
-4. **Privacy-First** — role-based access; no unnecessary clinical exposure
+## ☁️ Continuous Deployment
+The repository relies on GitHub Actions. Commits to the `main` branch dynamically trigger `.github/workflows/deploy.yml` which SSH's directly into the target OCI node to handle rolling updates transparently.

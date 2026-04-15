@@ -1,0 +1,33 @@
+name: Deploy to OCI
+
+on:
+  push:
+    branches: [ "main" ]
+  workflow_dispatch:
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Deploy via SSH
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.OCI_HOST }}
+          username: ${{ secrets.OCI_USER }}
+          key: ${{ secrets.OCI_SSH_KEY }}
+          script: |
+            cd /opt/stillmind
+            
+            # Pull latest code
+            git pull origin main
+            
+            # Restart containers and build new images if anything changed
+            docker compose down
+            docker compose up -d --build
+            
+            # Run database migrations
+            docker compose exec -T backend uv run alembic upgrade head

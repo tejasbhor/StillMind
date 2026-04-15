@@ -1,0 +1,25 @@
+{
+    email support@stillmind.edu
+}
+
+# Local dev or production domain
+{$DOMAIN:localhost} {
+    # Route API traffic to the backend
+    handle_path /api/* {
+        reverse_proxy backend:8000
+    }
+    
+    # Route internal documentation/swagger traffic to backend
+    handle_path /docs* {
+        reverse_proxy backend:8000
+    }
+
+    handle_path /openapi.json* {
+        reverse_proxy backend:8000
+    }
+
+    # Everything else goes to the Next.js frontend
+    handle {
+        reverse_proxy frontend:3000
+    }
+}
