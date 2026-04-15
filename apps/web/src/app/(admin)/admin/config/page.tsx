@@ -32,7 +32,7 @@ function SliderRow({
           min={min} max={max} step={step}
           value={value}
           onChange={(e) => onChange(parseFloat(e.target.value))}
-          className="absolute inset-0 w-full opacity-0 cursor-none"
+          className="absolute inset-0 w-full opacity-0 cursor-pointer"
         />
         <div
           className="absolute -top-1 w-4 h-4 rounded-full bg-[#7BA89A] border-2 border-white shadow-sm transition-all pointer-events-none"
@@ -81,7 +81,7 @@ export default function AdminConfigPage() {
     <div className="flex flex-col gap-6 max-w-2xl mx-auto">
       <div className="animate-fade-up">
         <h1 className="font-serif text-3xl text-[#3D5A54]">Configuration</h1>
-        <p className="font-sans font-light text-sm text-[#3D5A54]/55 mt-1">
+        <p className="font-sans font-normal text-sm text-[#3D5A54]/75 mt-1">
           All changes are audit-logged immediately with your admin ID.
         </p>
       </div>
@@ -93,8 +93,8 @@ export default function AdminConfigPage() {
             key={t}
             onClick={() => setTab(t)}
             className={cn(
-              "flex-1 py-2 rounded-lg font-sans text-sm transition-all cursor-none capitalize",
-              tab === t ? "bg-[#3D5A54] text-white font-medium" : "text-[#3D5A54]/50 hover:text-[#3D5A54]"
+              "flex-1 py-2 rounded-lg font-sans text-sm transition-all cursor-pointer capitalize",
+              tab === t ? "bg-[#3D5A54] text-white font-medium" : "text-[#3D5A54]/60 hover:text-[#3D5A54]"
             )}
           >
             {t === "resource" ? "Resources" : t === "thresholds" ? "Risk thresholds" : "Priority weights"}
@@ -129,7 +129,7 @@ export default function AdminConfigPage() {
       {tab === "thresholds" && (
         <Card className="animate-scale-in" padding="lg">
           <h2 className="font-serif text-xl text-[#3D5A54] mb-2">Risk classification thresholds</h2>
-          <p className="font-sans font-light text-xs text-[#3D5A54]/50 mb-6">
+          <p className="font-sans font-normal text-xs text-[#3D5A54]/70 mb-6">
             CRI ranges determine how students are categorised. Changes take effect on next risk computation.
           </p>
           <div className="flex flex-col gap-8">
@@ -169,7 +169,7 @@ export default function AdminConfigPage() {
       {tab === "weights" && (
         <Card className="animate-scale-in" padding="lg">
           <h2 className="font-serif text-xl text-[#3D5A54] mb-2">Priority score weights</h2>
-          <p className="font-sans font-light text-xs text-[#3D5A54]/50 mb-6">
+          <p className="font-sans font-normal text-xs text-[#3D5A54]/70 mb-6">
             Weights must sum to exactly 1.00. Formula: Priority = Σ(weight × factor).
           </p>
           <div className="flex flex-col gap-8">
@@ -209,7 +209,7 @@ export default function AdminConfigPage() {
       </div>
 
       <div className="animate-fade-up stagger-4 rounded-xl bg-[#E8F2EE] border border-[#B8D4C0] px-4 py-3">
-        <p className="font-sans text-xs font-light text-[#3D5A54]/60 leading-relaxed">
+        <p className="font-sans text-xs font-normal text-[#3D5A54]/70 leading-relaxed">
           All configuration changes are written to the immutable audit log with your actor ID, timestamp, and previous value. Changes are irreversible — the log records the full history.
         </p>
       </div>

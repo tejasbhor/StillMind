@@ -10,19 +10,19 @@ interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
 const Button = forwardRef<HTMLButtonElement, ButtonProps>(
   ({ className, variant = "primary", size = "md", loading, children, disabled, ...props }, ref) => {
     const base =
-      "inline-flex items-center justify-center gap-2 rounded-full font-sans font-medium transition-all duration-200 cursor-none select-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#7BA89A] focus-visible:ring-offset-2 active:scale-[0.97] disabled:opacity-50 disabled:pointer-events-none";
+      "inline-flex items-center justify-center gap-2 rounded-full font-sans font-medium transition-all duration-200 cursor-pointer select-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#3D5A54] focus-visible:ring-offset-2 active:scale-[0.97] disabled:opacity-50 disabled:pointer-events-none";
 
     const variants = {
       primary:
-        "bg-[#7BA89A] text-white hover:bg-[#5C8A7B] hover:shadow-[0_4px_16px_rgba(123,168,154,0.35)]",
+        "bg-[#5C8A7B] text-white hover:bg-[#3D5A54] hover:shadow-[0_4px_16px_rgba(61,90,84,0.25)]",
       ghost:
-        "bg-transparent text-[#7BA89A] border border-[#B8D4C0] hover:border-[#7BA89A] hover:bg-[#E8F2EE]",
+        "bg-transparent text-[#3E5C52] border border-[#B8D4C0] hover:border-[#7BA89A] hover:bg-[#E8F2EE]",
       danger:
-        "bg-[#FDEAEA] text-[#B03030] border border-[#F5B8B8] hover:bg-[#F5B8B8]",
+        "bg-[#FDEAEA] text-[#B03030] border border-[#F5B8B8] hover:bg-[#F5B8B8] hover:text-white",
       amber:
-        "bg-[#FEF4E0] text-[#A0700A] border border-[#E8D4B0] hover:bg-[#E8D4B0]",
+        "bg-[#FEF4E0] text-[#855C08] border border-[#E8D4B0] hover:bg-[#E8D4B0] hover:text-[#3D5A54]",
       outline:
-        "bg-transparent text-[#3D5A54] border border-[#B8D4C0] hover:border-[#7BA89A] hover:bg-[#E8F2EE]",
+        "bg-transparent text-[#3D5A54] border border-[#B8D4C0] hover:border-[#3D5A54] hover:bg-[#F5F3EF]",
     };
 
     const sizes = {

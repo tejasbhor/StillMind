@@ -40,7 +40,7 @@ export default function PriorityQueuePage() {
       <div className="animate-fade-up flex items-start justify-between gap-4 flex-wrap">
         <div>
           <h1 className="font-serif text-3xl text-[#3D5A54]">Priority queue</h1>
-          <p className="font-sans font-light text-sm text-[#3D5A54]/55 mt-1">
+          <p className="font-sans font-normal text-sm text-[#3D5A54]/75 mt-1">
             Sorted by risk level, then priority score. RED cases appear first.
           </p>
         </div>
@@ -81,7 +81,7 @@ export default function PriorityQueuePage() {
 
             {/* Main row */}
             <div
-              className="flex items-center gap-4 p-4 cursor-none"
+              className="flex items-center gap-4 p-4 cursor-pointer"
               onClick={() => setExpanded(expanded === s.id ? null : s.id)}
             >
               {/* Rank */}

@@ -26,36 +26,45 @@ const PAST = [
 ];
 
 const STATUS_CHIP: Record<string, { label: string; cls: string }> = {
-  ASSIGNED:   { label: "Awaiting confirmation", cls: "bg-[#FEF4E0] text-[#A0700A] border-[#E8D4B0]" },
+  ASSIGNED:   { label: "Awaiting confirmation", cls: "bg-[#FEF4E0] text-[#A0700A] border-[#D4A017] font-semibold" },
   CONFIRMED:  { label: "Confirmed",              cls: "bg-[#E8F2EE] text-[#3D5A54] border-[#B8D4C0]" },
   COMPLETED:  { label: "Completed",              cls: "bg-[#E8F2EE] text-[#3D5A54] border-[#B8D4C0]" },
   MISSED:     { label: "Missed",                 cls: "bg-[#FDEAEA] text-[#B03030] border-[#F5B8B8]" },
+  DECLINED:   { label: "Declined",               cls: "bg-[#FAFAFA] text-[#3D5A54]/50 border-[#E8F2EE]" },
   PENDING_RANKING: { label: "In priority queue", cls: "bg-[#E8EEF5] text-[#7F96B8] border-[#C4D4E8]" },
 };
 
 export default function AppointmentsPage() {
-  const [showConfirm, setShowConfirm]     = useState(false);
-  const [showDecline, setShowDecline]     = useState(false);
-  const [showReschedule, setShowReschedule] = useState(false);
-  const [confirmed, setConfirmed]         = useState(false);
-  const [loading, setLoading]             = useState(false);
   const apt = MOCK_APPOINTMENT;
+  const [showConfirm, setShowConfirm]       = useState(false);
+  const [showDecline, setShowDecline]       = useState(false);
+  const [showReschedule, setShowReschedule] = useState(false);
+  const [loading, setLoading]               = useState(false);
+  const [status, setStatus]                 = useState(apt.status);
 
   const handleConfirm = async () => {
     setLoading(true);
     await new Promise((r) => setTimeout(r, 1000));
-    setConfirmed(true);
+    setStatus("CONFIRMED");
     setLoading(false);
     setShowConfirm(false);
   };
 
-  const status = confirmed ? "CONFIRMED" : apt.status;
+  const handleDecline = () => {
+    setStatus("DECLINED");
+    setShowDecline(false);
+  };
+
+  const handleReschedule = () => {
+    setStatus("PENDING_RANKING");
+    setShowReschedule(false);
+  };
 
   return (
     <div className="flex flex-col gap-8 max-w-2xl mx-auto">
       <div className="animate-fade-up">
-        <h1 className="font-serif text-3xl text-[#3D5A54]">Appointments</h1>
-        <p className="font-sans font-light text-sm text-[#3D5A54]/55 mt-1">
+        <h1 className="font-serif text-3xl font-semibold text-[#1C3530]">Appointments</h1>
+        <p className="font-sans font-normal text-sm text-[#4A5E5A] mt-1">
           Manage your counselling sessions.
         </p>
       </div>
@@ -63,7 +72,7 @@ export default function AppointmentsPage() {
       {/* Current appointment */}
       <Card className="animate-fade-up stagger-1" padding="lg">
         <div className="flex items-start justify-between flex-wrap gap-3 mb-5">
-          <p className="font-sans text-xs font-medium tracking-widest uppercase text-[#7BA89A]">
+          <p className="font-sans text-[11px] font-semibold tracking-[1.5px] uppercase text-[#7BA89A]">
             Upcoming session
           </p>
           <span className={cn("text-xs font-sans font-medium rounded-full px-3 py-1 border", STATUS_CHIP[status].cls)}>
@@ -72,8 +81,8 @@ export default function AppointmentsPage() {
         </div>
 
         <div className="flex flex-col gap-3 mb-6">
-          <h2 className="font-serif text-2xl text-[#3D5A54]">{apt.counselor}</h2>
-          <p className="font-sans text-sm text-[#3D5A54]/55">{apt.specialty}</p>
+          <h2 className="font-serif text-2xl font-bold text-[#1C3530]">{apt.counselor}</h2>
+          <p className="font-sans text-sm text-[#4A5E5A]">{apt.specialty}</p>
 
           <div className="grid grid-cols-2 gap-3 mt-2">
             {[
@@ -83,41 +92,43 @@ export default function AppointmentsPage() {
               { icon: "⌖", label: "Location", value: apt.location },
             ].map((d) => (
               <div key={d.label} className="flex flex-col gap-0.5">
-                <p className="font-sans text-xs text-[#3D5A54]/40">{d.label}</p>
-                <p className="font-sans text-sm text-[#3D5A54] font-medium">{d.value}</p>
+                <p className="font-sans text-[11px] font-semibold text-[#7BA89A]">{d.label}</p>
+                <p className="font-sans text-sm font-medium text-[#1C3530]">{d.value}</p>
               </div>
             ))}
           </div>
         </div>
 
-        {!confirmed && (
-          <div className="rounded-xl bg-[#FEF4E0] border border-[#E8D4B0] px-4 py-3 mb-5">
-            <p className="font-sans text-xs text-[#A0700A]">
+        {status !== "CONFIRMED" && (
+          <div className="rounded-xl bg-[#FEF3CD] border border-transparent border-l-[3px] border-l-[#D4A017] px-4 py-3 mb-5">
+            <p className="font-sans text-xs font-medium text-[#7A5200]">
               Please confirm by this evening. Unconfirmed slots are released 12 hours before the session.
             </p>
           </div>
         )}
 
         <div className="flex flex-wrap gap-3">
-          {!confirmed && (
+          {(status === "ASSIGNED" || status === "PENDING_RANKING") && (
             <Button id="btn-confirm" onClick={() => setShowConfirm(true)} size="md" className="flex-1 sm:flex-none">
               Confirm session
             </Button>
           )}
-          {confirmed && (
+          {status === "CONFIRMED" && (
             <div className="flex items-center gap-2 text-[#7BA89A]">
               <span className="animate-tick inline-block">✓</span>
               <span className="font-sans text-sm">Session confirmed</span>
             </div>
           )}
-          {apt.canReschedule && apt.reschedulesUsed < 1 && (
-            <Button id="btn-reschedule" variant="ghost" size="md" onClick={() => setShowReschedule(true)}>
+          {apt.canReschedule && (status === "ASSIGNED" || status === "CONFIRMED") && (
+            <Button id="btn-reschedule" variant="ghost" size="md" onClick={() => setShowReschedule(true)} className="border-[#3D5A54] text-[#3D5A54] font-medium">
               Reschedule
             </Button>
           )}
-          <Button id="btn-decline" variant="outline" size="md" onClick={() => setShowDecline(true)}>
-            Decline
-          </Button>
+          {(status === "ASSIGNED" || status === "CONFIRMED" || status === "PENDING_RANKING") && (
+            <Button id="btn-decline" variant="outline" size="md" onClick={() => setShowDecline(true)} className="border-[#3D5A54] text-[#3D5A54] font-medium bg-transparent hover:bg-[#F5F3EF]">
+              Decline
+            </Button>
+          )}
         </div>
       </Card>
 
@@ -147,7 +158,7 @@ export default function AppointmentsPage() {
 
       {/* Confirm modal */}
       <Modal open={showConfirm} onClose={() => setShowConfirm(false)} title="Confirm your session">
-        <p className="font-sans font-light text-sm text-[#3D5A54]/70 mb-6 leading-relaxed">
+        <p className="font-sans font-normal text-sm text-[#3D5A54]/80 mb-6 leading-relaxed">
           You're confirming your session with <strong className="font-medium text-[#3D5A54]">{apt.counselor}</strong> on{" "}
           <strong className="font-medium text-[#3D5A54]">{apt.date}</strong> at{" "}
           <strong className="font-medium text-[#3D5A54]">{apt.time}</strong>.
@@ -165,7 +176,7 @@ export default function AppointmentsPage() {
         </p>
         <div className="flex gap-3">
           <Button variant="ghost" onClick={() => setShowDecline(false)} className="flex-1">Go back</Button>
-          <Button variant="danger" onClick={() => setShowDecline(false)} className="flex-1" id="modal-decline">Decline slot</Button>
+          <Button variant="danger" onClick={handleDecline} className="flex-1" id="modal-decline">Decline slot</Button>
         </div>
       </Modal>
 
@@ -176,7 +187,7 @@ export default function AppointmentsPage() {
         </p>
         <div className="flex gap-3">
           <Button variant="ghost" onClick={() => setShowReschedule(false)} className="flex-1">Cancel</Button>
-          <Button variant="amber" onClick={() => setShowReschedule(false)} className="flex-1" id="modal-reschedule">Request reschedule</Button>
+          <Button variant="amber" onClick={handleReschedule} className="flex-1" id="modal-reschedule">Request reschedule</Button>
         </div>
       </Modal>
     </div>

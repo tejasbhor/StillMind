@@ -59,11 +59,11 @@ function StatItem({ value, suffix, label }: (typeof STATS)[number]) {
 
   return (
     <div ref={wrapRef} className="flex flex-col items-center gap-1 text-center">
-      <p className="font-serif text-5xl text-[#3D5A54] leading-none">
+      <p className="font-serif text-5xl text-[#E8F2EE] leading-none">
         <span ref={numRef}>0</span>
         <span>{suffix}</span>
       </p>
-      <p className="font-sans text-sm font-light text-[#7F96B8] max-w-[8rem]">{label}</p>
+      <p className="font-sans text-sm font-light text-[#B8D4C0] max-w-[8rem]">{label}</p>
     </div>
   );
 }

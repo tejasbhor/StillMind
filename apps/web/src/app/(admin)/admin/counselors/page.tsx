@@ -51,7 +51,7 @@ export default function AdminCounselorsPage() {
       <div className="animate-fade-up flex items-center justify-between">
         <div>
           <h1 className="font-serif text-3xl text-[#3D5A54]">Counsellors</h1>
-          <p className="font-sans font-light text-sm text-[#3D5A54]/55 mt-1">
+          <p className="font-sans font-normal text-sm text-[#3D5A54]/75 mt-1">
             {counselors.filter((c) => c.active).length} active · {counselors.length} total
           </p>
         </div>
@@ -66,7 +66,7 @@ export default function AdminCounselorsPage() {
             <thead>
               <tr className="border-b border-[#E8F2EE] bg-[#FAFCFA]">
                 {["Name", "Email", "Slots / day", "Assigned students", "Status", "Actions"].map((h) => (
-                  <th key={h} className="text-left px-5 py-3.5 font-sans text-xs font-medium text-[#3D5A54]/40 tracking-wider">
+                  <th key={h} className="text-left px-5 py-3.5 font-sans text-xs font-semibold text-[#3D5A54]/70 tracking-wider">
                     {h}
                   </th>
                 ))}
@@ -83,11 +83,11 @@ export default function AdminCounselorsPage() {
                   )}
                 >
                   <td className="px-5 py-4 font-sans text-sm font-medium text-[#3D5A54]">{c.name}</td>
-                  <td className="px-5 py-4 font-sans text-sm text-[#3D5A54]/60">{c.email}</td>
+                  <td className="px-5 py-4 font-sans text-sm text-[#3D5A54]/75">{c.email}</td>
                   <td className="px-5 py-4">
                     <span className="font-sans text-sm font-medium text-[#3D5A54]">{c.slots}</span>
                   </td>
-                  <td className="px-5 py-4 font-sans text-sm text-[#3D5A54]/60">{c.students}</td>
+                  <td className="px-5 py-4 font-sans text-sm text-[#3D5A54]/75">{c.students}</td>
                   <td className="px-5 py-4">
                     <span
                       className={cn(

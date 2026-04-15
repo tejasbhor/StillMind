@@ -2,7 +2,6 @@
 
 import { useEffect, useRef } from "react";
 import Link from "next/link";
-import CustomCursor from "@/components/layout/CustomCursor";
 import StatsSection from "@/components/landing/StatsSection";
 
 // ── Scroll reveal hook ─────────────────────────────────────────────────────────
@@ -103,20 +102,17 @@ export default function LandingPage() {
 
   return (
     <>
-      <CustomCursor />
-
       {/* ── Nav ─────────────────────────────────────────────────────────────── */}
-      <header className="fixed top-0 left-0 right-0 z-40 flex items-center justify-between px-8 py-5">
-        <div className="flex items-center gap-2">
-          <span className="inline-block w-7 h-7 rounded-full bg-[#7BA89A]" />
-          <span className="font-serif text-xl text-[#3D5A54]">StillMind</span>
+      <header className="fixed top-0 left-0 right-0 z-40 flex items-center px-8 py-5">
+        <div className="flex-1 flex items-center gap-2">
+          <img src="/logo.png" alt="StillMind Logo" className="h-[52px] w-auto mix-blend-multiply" />
         </div>
-        <nav className="hidden md:flex items-center gap-8">
-          <a href="#how-it-works" className="font-sans text-sm font-light text-[#3D5A54]/70 hover:text-[#3D5A54] transition-colors">How it works</a>
-          <a href="#principles"   className="font-sans text-sm font-light text-[#3D5A54]/70 hover:text-[#3D5A54] transition-colors">Principles</a>
-          <a href="#roles"        className="font-sans text-sm font-light text-[#3D5A54]/70 hover:text-[#3D5A54] transition-colors">Roles</a>
+        <nav className="hidden md:flex flex-[2] justify-center items-center gap-8">
+          <a href="#how-it-works" className="font-sans text-sm font-medium text-[#3D5A54] hover:text-[#1C3530] transition-colors">How it works</a>
+          <a href="#roles"        className="font-sans text-sm font-medium text-[#3D5A54] hover:text-[#1C3530] transition-colors">Roles</a>
+          <Link href="/login"     className="font-sans text-sm font-medium text-[#3D5A54] hover:text-[#1C3530] transition-colors">Counsellor Portal</Link>
         </nav>
-        <div className="flex items-center gap-3">
+        <div className="flex-1 flex items-center justify-end gap-3">
           <Link href="/login" className="btn-ghost text-sm px-5 py-2">
             Sign in
           </Link>
@@ -152,19 +148,19 @@ export default function LandingPage() {
 
           {/* Hero content */}
           <div className="relative z-10 flex flex-col items-center gap-7 max-w-3xl mx-auto">
-            <span className="inline-block rounded-full bg-white/80 border border-[#B8D4C0] px-4 py-1.5 font-sans text-xs font-medium text-[#7BA89A] tracking-wider uppercase animate-fade-in">
+            <span className="inline-block rounded-full border border-[#7BA89A] bg-white/80 px-4 py-1.5 font-sans text-xs font-medium text-[#3D5A54] tracking-wider uppercase animate-fade-in">
               Campus mental health, rethought
             </span>
 
             <h1
-              className="font-serif text-[clamp(2.6rem,6vw,4.25rem)] leading-[1.12] text-[#3D5A54] animate-fade-up"
+              className="font-serif text-[clamp(2.6rem,6vw,4.25rem)] leading-[1.12] text-[#1C3530] animate-fade-up"
               style={{ animationDelay: "0.1s" }}
             >
               Your campus has<br />a quiet corner.
             </h1>
 
             <p
-              className="font-sans font-light text-lg text-[#3D5A54]/65 max-w-xl leading-relaxed animate-fade-up"
+              className="font-sans font-light text-base text-[#4A5E5A] max-w-xl leading-relaxed animate-fade-up"
               style={{ animationDelay: "0.2s" }}
             >
               StillMind connects students who need support with counsellors who can help —
@@ -178,13 +174,13 @@ export default function LandingPage() {
               <Link href="/register" className="btn-primary text-base px-8 py-3.5">
                 Begin your check-in
               </Link>
-              <a href="#how-it-works" className="btn-ghost text-base px-8 py-3.5">
+              <a href="#how-it-works" className="font-sans font-medium text-base px-8 py-3.5 rounded-full border-2 border-[#3D5A54] text-[#3D5A54] hover:bg-[#F5F3EF] transition-all">
                 See how it works
               </a>
             </div>
 
             <p
-              className="font-sans text-xs font-light text-[#3D5A54]/40 animate-fade-up"
+              className="font-sans text-xs font-medium text-[#6B7E7A] animate-fade-up"
               style={{ animationDelay: "0.4s" }}
             >
               Free for enrolled students · No clinical labels · Human counsellors in the loop
@@ -193,7 +189,7 @@ export default function LandingPage() {
 
           {/* Scroll indicator */}
           <div className="absolute bottom-10 left-1/2 -translate-x-1/2 flex flex-col items-center gap-2 animate-fade-in" style={{ animationDelay: "1s" }}>
-            <span className="font-sans text-xs font-light text-[#3D5A54]/40">Scroll</span>
+            <span className="font-sans text-xs font-normal text-[#3D5A54]/50">Scroll</span>
             <div className="w-px h-10 bg-gradient-to-b from-[#B8D4C0] to-transparent" />
           </div>
         </section>
@@ -215,7 +211,7 @@ export default function LandingPage() {
                 >
                   <span className="font-serif text-5xl text-[#B8D4C0]">{step.num}</span>
                   <h3 className="font-serif text-xl text-[#3D5A54]">{step.title}</h3>
-                  <p className="font-sans font-light text-[0.9375rem] text-[#3D5A54]/65 leading-relaxed">{step.body}</p>
+                  <p className="font-sans font-normal text-[0.9375rem] text-[#3D5A54]/75 leading-relaxed">{step.body}</p>
                 </div>
               ))}
             </div>
@@ -242,7 +238,7 @@ export default function LandingPage() {
                 >
                   <span className="text-3xl text-[#7BA89A]">{p.icon}</span>
                   <h3 className="font-serif text-lg text-[#3D5A54] leading-snug">{p.title}</h3>
-                  <p className="font-sans font-light text-sm text-[#3D5A54]/65 leading-relaxed">{p.body}</p>
+                  <p className="font-sans font-normal text-sm text-[#3D5A54]/75 leading-relaxed">{p.body}</p>
                 </div>
               ))}
             </div>
@@ -268,10 +264,10 @@ export default function LandingPage() {
                     transitionDelay: `${i * 0.1}s`,
                   }}
                 >
-                  <p className="font-sans text-xs font-medium tracking-widest uppercase text-[#7BA89A]">{r.role}</p>
+                  <p className="font-sans text-xs font-medium tracking-widest uppercase text-[#3E5C52]">{r.role}</p>
                   <h3 className="font-serif text-xl text-[#3D5A54]">{r.headline}</h3>
-                  <p className="font-sans font-light text-sm text-[#3D5A54]/70 leading-relaxed flex-1">{r.description}</p>
-                  <span className="font-sans text-xs font-medium text-[#7BA89A]">{r.cta}</span>
+                  <p className="font-sans font-normal text-sm text-[#3D5A54]/80 leading-relaxed flex-1">{r.description}</p>
+                  <span className="font-sans text-xs font-bold text-[#3E5C52]">{r.cta}</span>
                 </div>
               ))}
             </div>
@@ -290,7 +286,7 @@ export default function LandingPage() {
             <h2 className="font-serif text-[clamp(1.8rem,4vw,2.8rem)] text-[#3D5A54]">
               Ready to find your quiet corner?
             </h2>
-            <p className="font-sans font-light text-[#3D5A54]/65 leading-relaxed max-w-md">
+            <p className="font-sans font-normal text-[#3D5A54]/75 leading-relaxed max-w-md">
               StillMind is available to all enrolled students at participating institutions.
               Registration takes two minutes.
             </p>
@@ -310,10 +306,9 @@ export default function LandingPage() {
       <footer className="border-t border-[#E8F2EE] px-8 py-10">
         <div className="mx-auto max-w-5xl flex flex-col md:flex-row items-center justify-between gap-6">
           <div className="flex items-center gap-2">
-            <span className="inline-block w-5 h-5 rounded-full bg-[#7BA89A]" />
-            <span className="font-serif text-lg text-[#3D5A54]">StillMind</span>
+            <img src="/logo.png" alt="StillMind Logo" className="h-12 w-auto mix-blend-multiply" />
           </div>
-          <p className="font-sans text-xs font-light text-[#3D5A54]/40 text-center">
+          <p className="font-sans text-xs font-normal text-[#3D5A54]/50 text-center">
             A rule-based, explainable mental health triage platform · v1.0 · April 2026
           </p>
           <div className="flex items-center gap-6">

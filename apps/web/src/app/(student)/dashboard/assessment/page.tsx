@@ -240,7 +240,7 @@ export default function AssessmentPage() {
             <span className="text-3xl">◎</span>
           </div>
           <h2 className="font-serif text-2xl text-[#3D5A54]">{r.title}</h2>
-          <p className="font-sans font-light text-sm text-[#3D5A54]/70 leading-relaxed">{r.body}</p>
+          <p className="font-sans font-normal text-sm text-[#3E5C52] leading-relaxed">{r.body}</p>
           <a href="/dashboard" className="btn-primary px-8 py-3">
             Back to dashboard
           </a>
@@ -367,7 +367,7 @@ export default function AssessmentPage() {
         {step === "review" && (
           <div key="review" className="w-full animate-slide-up flex flex-col gap-6">
             <h2 className="font-serif text-2xl text-[#3D5A54]">You're all done.</h2>
-            <p className="font-sans font-light text-sm text-[#3D5A54]/55 leading-relaxed">
+            <p className="font-sans font-normal text-sm text-[#3D5A54]/75 leading-relaxed">
               We've recorded your responses. When you're ready, submit to find out what support looks like for you right now.
             </p>
             <div className="rounded-xl bg-[#E8F2EE] border border-[#B8D4C0] p-5 flex flex-col gap-3">

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import React, { useState, Fragment } from "react";
 import Card from "@/components/ui/Card";
 import { cn } from "@/lib/cn";
 
@@ -31,7 +31,7 @@ export default function AuditLogsPage() {
     <div className="flex flex-col gap-6">
       <div className="animate-fade-up">
         <h1 className="font-serif text-3xl text-[#3D5A54]">Audit logs</h1>
-        <p className="font-sans font-light text-sm text-[#3D5A54]/55 mt-1">
+        <p className="font-sans font-normal text-sm text-[#3D5A54]/75 mt-1">
           Append-only. Every mutation is captured — no edits, no deletes.
         </p>
       </div>
@@ -43,7 +43,7 @@ export default function AuditLogsPage() {
           placeholder="Filter by action or role…"
           value={filter}
           onChange={(e) => setFilter(e.target.value)}
-          className="flex-1 rounded-xl border border-[#B8D4C0] bg-white px-4 py-2.5 font-sans text-sm text-[#3D5A54] placeholder:text-[#3D5A54]/30 focus:outline-none focus:border-[#7BA89A] focus:ring-2 focus:ring-[#7BA89A]/20 transition-all"
+          className="flex-1 rounded-xl border border-[#B8D4C0] bg-white px-4 py-2.5 font-sans text-sm text-[#3D5A54] placeholder:text-[#3D5A54]/30 focus:outline-none focus:border-[#3D5A54] focus:ring-2 focus:ring-[#3D5A54]/10 transition-all"
         />
       </div>
 
@@ -53,7 +53,7 @@ export default function AuditLogsPage() {
             <thead>
               <tr className="border-b border-[#E8F2EE] bg-[#FAFCFA]">
                 {["Timestamp", "Actor", "Role", "Action", "Resource", ""].map((h) => (
-                  <th key={h} className="text-left px-5 py-3.5 font-sans text-xs font-medium text-[#3D5A54]/40 tracking-wider whitespace-nowrap">
+                  <th key={h} className="text-left px-5 py-3.5 font-sans text-xs font-semibold text-[#3D5A54]/70 tracking-wider whitespace-nowrap">
                     {h}
                   </th>
                 ))}
@@ -61,17 +61,17 @@ export default function AuditLogsPage() {
             </thead>
             <tbody>
               {filtered.map((log, i) => (
-                <>
+                <React.Fragment key={log.id}>
                   <tr
                     key={log.id}
                     className={cn(
-                      "border-b border-[#E8F2EE] transition-colors cursor-none",
+                      "border-b border-[#E8F2EE] transition-colors cursor-pointer",
                       i % 2 === 0 ? "bg-white" : "bg-[#FAFCFA]",
                       "hover:bg-[#E8F2EE]/30"
                     )}
                     onClick={() => setExpanded(expanded === log.id ? null : log.id)}
                   >
-                    <td className="px-5 py-3.5 font-mono text-xs text-[#3D5A54]/60 whitespace-nowrap">{log.time}</td>
+                    <td className="px-5 py-3.5 font-mono text-xs text-[#3D5A54]/80 whitespace-nowrap">{log.time}</td>
                     <td className="px-5 py-3.5 font-sans text-sm text-[#3D5A54]">{log.actor}</td>
                     <td className="px-5 py-3.5">
                       <span className={cn("text-xs font-sans rounded-full px-2.5 py-0.5 border", ROLE_COLOR[log.role])}>
@@ -79,7 +79,7 @@ export default function AuditLogsPage() {
                       </span>
                     </td>
                     <td className="px-5 py-3.5 font-mono text-xs text-[#3D5A54] whitespace-nowrap">{log.action}</td>
-                    <td className="px-5 py-3.5 font-sans text-xs text-[#3D5A54]/60">{log.resource}</td>
+                    <td className="px-5 py-3.5 font-sans text-xs text-[#3D5A54]/75">{log.resource}</td>
                     <td className="px-5 py-3.5 text-[#3D5A54]/30 text-sm">
                       {expanded === log.id ? "↑" : "↓"}
                     </td>
@@ -101,7 +101,7 @@ export default function AuditLogsPage() {
                       </td>
                     </tr>
                   )}
-                </>
+                </React.Fragment>
               ))}
               {filtered.length === 0 && (
                 <tr>

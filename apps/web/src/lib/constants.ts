@@ -106,6 +106,7 @@ export const ALLOCATION_STATUSES = [
   "REASSIGNED",
   "COMPLETED",
 ] as const;
+export type AllocationStatus = (typeof ALLOCATION_STATUSES)[number];
 
 // ── Mood ───────────────────────────────────────────────────────────────────────
 export const MOODS = ["LOW", "NEUTRAL", "HIGH"] as const;

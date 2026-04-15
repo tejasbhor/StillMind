@@ -1,9 +1,11 @@
 "use client";
 
+import { useState } from "react";
 import Link from "next/link";
 import Card from "@/components/ui/Card";
 import Button from "@/components/ui/Button";
 import { cn } from "@/lib/cn";
+import { type AllocationStatus } from "@/lib/constants";
 
 // ── Mock data (replace with API calls) ────────────────────────────────────────
 const MOCK = {
@@ -14,7 +16,7 @@ const MOCK = {
     counselor:  "Dr. Priya Menon",
     date:       "Wednesday, 16 April 2026",
     time:       "10:30 AM",
-    status:     "ASSIGNED" as const,
+    status:     "ASSIGNED" as AllocationStatus,
     daysUntil:  1,
   },
   trend: "STABLE" as const,
@@ -56,7 +58,18 @@ function WaveProgress({ trend }: { trend: "IMPROVING" | "STABLE" | "WORSENING" }
 export default function StudentDashboard() {
   const m = MOCK;
   const softStyle = SOFT_STYLE[m.riskLevel];
-  const isConfirmed = m.appointment.status === "CONFIRMED";
+  const [status, setStatus] = useState<string>(m.appointment.status);
+  const [loading, setLoading] = useState(false);
+
+  const handleConfirm = async () => {
+    setLoading(true);
+    await new Promise((r) => setTimeout(r, 600));
+    setStatus("CONFIRMED");
+    setLoading(false);
+  };
+
+  const isConfirmed = status === "CONFIRMED";
+  const isPending = status === "ASSIGNED" || status === "PENDING_RANKING";
 
   return (
     <div className="flex flex-col gap-8 max-w-3xl mx-auto">
@@ -66,7 +79,7 @@ export default function StudentDashboard() {
         <h1 className="font-serif text-[2.4rem] text-[#3D5A54] leading-tight">
           Good morning, {m.firstName}.
         </h1>
-        <p className="font-sans font-light text-[#3D5A54]/55">
+        <p className="font-sans font-normal text-[#3D5A54]/75">
           Here's what's on your plate today.
         </p>
       </div>
@@ -87,7 +100,7 @@ export default function StudentDashboard() {
             {m.softLabel}
           </p>
         </div>
-        <p className="mt-2 font-sans font-light text-sm text-[#3D5A54]/55 ml-6">
+        <p className="mt-2 font-sans font-normal text-sm text-[#3D5A54]/75 ml-6">
           Your next check-in is due on {m.nextAssessment}.
           <Link href="/dashboard/assessment" className="ml-2 text-[#7BA89A] underline underline-offset-2">
             Take it now →
@@ -103,7 +116,7 @@ export default function StudentDashboard() {
               Upcoming appointment
             </p>
             <h2 className="font-serif text-xl text-[#3D5A54]">{m.appointment.counselor}</h2>
-            <p className="font-sans font-light text-sm text-[#3D5A54]/60">
+            <p className="font-sans font-normal text-sm text-[#3D5A54]/70">
               {m.appointment.date} · {m.appointment.time}
             </p>
           </div>
@@ -112,25 +125,33 @@ export default function StudentDashboard() {
               "text-xs font-sans font-medium rounded-full px-3 py-1 border",
               isConfirmed
                 ? "bg-[#E8F2EE] text-[#3D5A54] border-[#B8D4C0]"
+                : status === "DECLINED"
+                ? "bg-[#FAFAFA] text-[#3D5A54]/50 border-[#E8F2EE]"
+                : status === "RESCHEDULING"
+                ? "bg-[#E8EEF5] text-[#7F96B8] border-[#C4D4E8]"
                 : "bg-[#FEF4E0] text-[#A0700A] border-[#E8D4B0]"
             )}
           >
-            {isConfirmed ? "Confirmed" : "Awaiting confirmation"}
+            {isConfirmed ? "Confirmed" : status === "DECLINED" ? "Declined" : status === "RESCHEDULING" ? "In priority queue" : "Awaiting confirmation"}
           </span>
         </div>
 
         <div className="mt-5 flex flex-wrap gap-3">
-          {!isConfirmed && (
-            <Button id="confirm-appointment" size="md" className="flex-1 sm:flex-none">
+          {(!isConfirmed && status !== "DECLINED" && status !== "RESCHEDULING") && (
+            <Button id="confirm-appointment" size="md" loading={loading} onClick={handleConfirm} className="flex-1 sm:flex-none">
               Confirm appointment
             </Button>
           )}
-          <Button id="reschedule-appointment" variant="ghost" size="md" className="flex-1 sm:flex-none">
-            Reschedule
-          </Button>
-          <Button id="decline-appointment" variant="outline" size="md" className="flex-1 sm:flex-none">
-            Decline
-          </Button>
+          {(status !== "DECLINED" && status !== "RESCHEDULING") && (
+            <Button id="reschedule-appointment" variant="ghost" size="md" onClick={() => setStatus("RESCHEDULING")} className="flex-1 sm:flex-none">
+              Reschedule
+            </Button>
+          )}
+          {(status !== "DECLINED" && status !== "RESCHEDULING") && (
+            <Button id="decline-appointment" variant="outline" size="md" onClick={() => setStatus("DECLINED")} className="flex-1 sm:flex-none">
+              Decline
+            </Button>
+          )}
         </div>
 
         {m.appointment.daysUntil <= 1 && (
@@ -157,7 +178,7 @@ export default function StudentDashboard() {
           </Link>
         </div>
         <WaveProgress trend={m.trend} />
-        <p className="font-sans text-xs font-light text-[#3D5A54]/40 mt-2">
+        <p className="font-sans text-xs font-normal text-[#3D5A54]/50 mt-2">
           Abstract trend since your last check-in on {m.lastAssessment}. No scores — just direction.
         </p>
       </Card>
@@ -178,8 +199,8 @@ export default function StudentDashboard() {
           <Card key={n.id} padding="sm" className="flex items-start gap-3">
             <span className="mt-1 w-2 h-2 rounded-full bg-[#7BA89A] flex-shrink-0" />
             <div className="flex-1">
-              <p className="font-sans text-sm text-[#3D5A54]/80 leading-relaxed">{n.text}</p>
-              <p className="font-sans text-xs text-[#3D5A54]/35 mt-1">{n.time}</p>
+              <p className="font-sans text-sm text-[#3D5A54]/85 leading-relaxed">{n.text}</p>
+              <p className="font-sans text-xs text-[#3D5A54]/50 mt-1">{n.time}</p>
             </div>
           </Card>
         ))}

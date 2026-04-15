@@ -116,6 +116,13 @@ export default function RegisterPage() {
       {/* ── Step 1: Account ── */}
       {step === 1 && (
         <form onSubmit={form1.handleSubmit(onStep1)} className="flex flex-col gap-5" noValidate>
+          {/* Quick Demo Pre-fill */}
+          <div className="flex flex-wrap items-center gap-2 mb-[-8px]">
+            <p className="font-sans text-xs text-[#3D5A54]/60 mr-1">Quick Demo:</p>
+            <button type="button" onClick={() => { form1.setValue("email", "student@university.edu"); form1.setValue("password", "demo1234"); form1.setValue("confirmPassword", "demo1234"); }} className="px-3 py-1 font-sans text-xs rounded-full bg-[#E8F2EE] text-[#3D5A54] hover:bg-[#7BA89A] hover:text-white transition-all cursor-pointer">Student</button>
+            <button type="button" onClick={() => { form1.setValue("email", "counselor@university.edu"); form1.setValue("password", "demo1234"); form1.setValue("confirmPassword", "demo1234"); }} className="px-3 py-1 font-sans text-xs rounded-full bg-[#FEF4E0] text-[#A0700A] hover:bg-[#D4A017] hover:text-white transition-all cursor-pointer">Counsellor</button>
+            <button type="button" onClick={() => { form1.setValue("email", "admin@university.edu"); form1.setValue("password", "demo1234"); form1.setValue("confirmPassword", "demo1234"); }} className="px-3 py-1 font-sans text-xs rounded-full bg-[#FDEAEA] text-[#B03030] hover:bg-[#B03030] hover:text-white transition-all cursor-pointer">Admin</button>
+          </div>
           <Input
             id="reg-email"
             label="Email address"

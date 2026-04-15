@@ -12,7 +12,7 @@ import type { RiskLevel, TrendValue } from "@/lib/constants";
 // ── Mock Data ──────────────────────────────────────────────────────────────────
 const ALERTS = [
   { id: "a1", type: "red-new",   label: "New RED case",            detail: "STU-004 classified RED after latest check-in.", time: "12m ago" },
-  { id: "a2", type: "no-show",   label: "Session missed",          detail: "STU-002 did not attend the 9:00 AM slot.",       time: "2h ago" },
+  { id: "a2", type: "no-show",   label: "⚠️ Session missed (No-Show)", detail: "STU-002 did not attend the 9:00 AM slot. Engagement flag raised.", time: "2h ago" },
   { id: "a3", type: "worsening", label: "Worsening trend detected", detail: "STU-007 showing worsening trend across 3 check-ins.", time: "1d ago" },
 ];
 
@@ -57,7 +57,7 @@ export default function CounselorDashboard() {
     <div className="flex flex-col gap-8">
       <div className="animate-fade-up">
         <h1 className="font-serif text-3xl text-[#3D5A54]">Good morning, Dr. Menon.</h1>
-        <p className="font-sans font-light text-sm text-[#3D5A54]/55 mt-1">
+        <p className="font-sans font-normal text-sm text-[#3D5A54]/75 mt-1">
           You have 4 sessions today and {QUEUE_PREVIEW.filter(q => q.risk === "RED").length} new RED cases in your queue.
         </p>
       </div>
@@ -67,16 +67,46 @@ export default function CounselorDashboard() {
         {[
           { label: "Today's sessions",  value: "4",  sub: "1 missed",      color: "#3D5A54" },
           { label: "Priority queue",    value: "12", sub: "2 RED cases",   color: "#B03030" },
+          { label: "Unread messages",   value: "2",  sub: "From 1 student", color: "#7BA89A" },
           { label: "Active alerts",     value: "3",  sub: "Needs review",  color: "#A0700A" },
-          { label: "Assigned students", value: "31", sub: "All time",      color: "#3D5A54" },
         ].map((s) => (
           <Card key={s.label} padding="md" className="flex flex-col gap-1">
-            <p className="font-sans text-xs text-[#3D5A54]/40">{s.label}</p>
+            <p className="font-sans text-xs text-[#3D5A54]/60">{s.label}</p>
             <p className="font-serif text-3xl" style={{ color: s.color }}>{s.value}</p>
             <p className="font-sans text-xs text-[#3D5A54]/40">{s.sub}</p>
           </Card>
         ))}
       </div>
+
+      {/* ── Workload overview ─────────────────────────────────────────────── */}
+      <Card className="animate-fade-up stagger-1" padding="md">
+        <div className="flex items-center justify-between mb-4">
+            <h2 className="font-serif text-lg text-[#3D5A54]">Workload Capacity</h2>
+            <span className="font-sans text-xs font-medium text-[#7BA89A] px-2.5 py-1 bg-[#E8F2EE] rounded-full">Balanced Allocation</span>
+        </div>
+        <div className="grid sm:grid-cols-2 gap-8">
+            <div className="flex flex-col gap-2">
+                <div className="flex justify-between font-sans text-sm text-[#3D5A54] font-medium">
+                    <span>Clinical Limits (Today)</span>
+                    <span>4 / 6 sessions</span>
+                </div>
+                <div className="w-full bg-[#E8F2EE] rounded-full h-2">
+                    <div className="bg-[#7BA89A] h-2 rounded-full" style={{ width: "66%" }}></div>
+                </div>
+                <p className="font-sans text-xs text-[#3D5A54]/50">Optimal load, ready for crisis slots.</p>
+            </div>
+            <div className="flex flex-col gap-2">
+                <div className="flex justify-between font-sans text-sm text-[#3D5A54] font-medium">
+                    <span>High-risk Caseload</span>
+                    <span>2 RED active</span>
+                </div>
+                <div className="w-full bg-[#F5B8B8]/30 rounded-full h-2">
+                    <div className="bg-[#B03030] h-2 rounded-full" style={{ width: "30%" }}></div>
+                </div>
+                <p className="font-sans text-xs text-[#3D5A54]/50">System load balancer prevents RED concentration.</p>
+            </div>
+        </div>
+      </Card>
 
       <div className="grid lg:grid-cols-2 gap-6">
 
@@ -96,7 +126,7 @@ export default function CounselorDashboard() {
                 </span>
                 <div className="flex-1 min-w-0">
                   <p className="font-sans text-sm font-medium text-[#3D5A54]">{a.label}</p>
-                  <p className="font-sans text-xs font-light text-[#3D5A54]/55 mt-0.5">{a.detail}</p>
+                <p className="font-sans text-xs font-normal text-[#3D5A54]/75 mt-0.5">{a.detail}</p>
                 </div>
                 <span className="font-sans text-xs text-[#3D5A54]/30 flex-shrink-0">{a.time}</span>
               </div>
@@ -117,7 +147,7 @@ export default function CounselorDashboard() {
               <div
                 key={s.id}
                 className={cn(
-                  "flex items-center gap-3 rounded-xl p-3 border transition-all cursor-none",
+                  "flex items-center gap-3 rounded-xl p-3 border transition-all cursor-pointer",
                   selectedSession === s.id
                     ? "border-[#7BA89A] bg-[#E8F2EE]"
                     : "border-[#E8F2EE] bg-white hover:border-[#B8D4C0]"

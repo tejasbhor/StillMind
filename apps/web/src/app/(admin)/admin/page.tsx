@@ -37,7 +37,7 @@ export default function AdminDashboard() {
     <div className="flex flex-col gap-8">
       <div className="animate-fade-up">
         <h1 className="font-serif text-3xl text-[#3D5A54]">System overview</h1>
-        <p className="font-sans font-light text-sm text-[#3D5A54]/55 mt-1">
+        <p className="font-sans font-normal text-sm text-[#3D5A54]/75 mt-1">
           Wednesday, 16 April 2026 · All data is aggregated; no individual clinical data shown.
         </p>
       </div>
@@ -46,9 +46,9 @@ export default function AdminDashboard() {
       <div className="grid grid-cols-2 lg:grid-cols-3 gap-4 animate-fade-up stagger-1">
         {METRICS.map((m) => (
           <Card key={m.label} padding="md" className="flex flex-col gap-1">
-            <p className="font-sans text-xs text-[#3D5A54]/40">{m.label}</p>
+            <p className="font-sans text-xs text-[#3D5A54]/60">{m.label}</p>
             <p className="font-serif text-2xl" style={{ color: m.color }}>{m.value}</p>
-            <p className="font-sans text-xs text-[#3D5A54]/40">{m.sub}</p>
+            <p className="font-sans text-xs text-[#3D5A54]/60">{m.sub}</p>
           </Card>
         ))}
       </div>
@@ -57,7 +57,7 @@ export default function AdminDashboard() {
         {/* ── Risk distribution ───────────────────────────────────────────── */}
         <Card className="animate-fade-up stagger-2" padding="md">
           <h2 className="font-serif text-lg text-[#3D5A54] mb-4">Risk distribution</h2>
-          <p className="font-sans text-xs font-light text-[#3D5A54]/40 mb-4">
+          <p className="font-sans text-xs font-normal text-[#3D5A54]/60 mb-4">
             Aggregated percentages only — no individual identification.
           </p>
           <div className="flex items-center gap-6">
@@ -135,7 +135,7 @@ export default function AdminDashboard() {
                   <p className={`font-sans text-sm font-medium ${a.type === "warning" ? "text-[#A0700A]" : "text-[#7F96B8]"}`}>
                     {a.label}
                   </p>
-                  <p className="font-sans text-xs font-light text-[#3D5A54]/60 mt-0.5">{a.detail}</p>
+                  <p className="font-sans text-xs font-normal text-[#3D5A54]/70 mt-0.5">{a.detail}</p>
                 </div>
                 <Link
                   href="/admin/config"

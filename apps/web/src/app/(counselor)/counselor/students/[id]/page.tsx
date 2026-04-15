@@ -34,7 +34,7 @@ const STUDENT = {
 };
 
 // ── Session note form ──────────────────────────────────────────────────────────
-function SessionNoteForm({ onClose }: { onClose: () => void }) {
+function SessionNoteForm({ onClose, onSave }: { onClose: () => void, onSave: (note: string) => void }) {
   const [mood,       setMood]       = useState<MoodValue | null>(null);
   const [engagement, setEngagement] = useState<"LOW" | "MEDIUM" | "HIGH" | null>(null);
   const [concerns,   setConcerns]   = useState<string[]>([]);
@@ -51,6 +51,7 @@ function SessionNoteForm({ onClose }: { onClose: () => void }) {
     await new Promise((r) => setTimeout(r, 1000));
     setSaving(false);
     setSaved(true);
+    onSave(actionPlan || "Routine session check-in.");
     setTimeout(onClose, 800);
   };
 
@@ -68,7 +69,7 @@ function SessionNoteForm({ onClose }: { onClose: () => void }) {
               type="button"
               onClick={() => setMood(m)}
               className={cn(
-                "flex-1 flex flex-col items-center gap-1.5 py-4 rounded-xl border transition-all cursor-none",
+                "flex-1 flex flex-col items-center gap-1.5 py-4 rounded-xl border transition-all cursor-pointer",
                 mood === m
                   ? "border-[#7BA89A] bg-[#E8F2EE]"
                   : "border-[#E8F2EE] bg-white hover:border-[#B8D4C0]"
@@ -91,7 +92,7 @@ function SessionNoteForm({ onClose }: { onClose: () => void }) {
               type="button"
               onClick={() => setEngagement(e)}
               className={cn(
-                "flex-1 py-2.5 rounded-xl border font-sans text-sm transition-all cursor-none",
+                "flex-1 py-2.5 rounded-xl border font-sans text-sm transition-all cursor-pointer",
                 engagement === e
                   ? "border-[#7BA89A] bg-[#E8F2EE] text-[#3D5A54] font-medium"
                   : "border-[#E8F2EE] text-[#3D5A54]/50 hover:border-[#B8D4C0]"
@@ -113,7 +114,7 @@ function SessionNoteForm({ onClose }: { onClose: () => void }) {
               type="button"
               onClick={() => toggleConcern(c)}
               className={cn(
-                "px-3 py-1.5 rounded-full border font-sans text-xs transition-all cursor-none",
+                "px-3 py-1.5 rounded-full border font-sans text-xs transition-all cursor-pointer",
                 concerns.includes(c)
                   ? "border-[#7BA89A] bg-[#E8F2EE] text-[#3D5A54] font-medium"
                   : "border-[#E8F2EE] bg-white text-[#3D5A54]/60 hover:border-[#B8D4C0]"
@@ -138,7 +139,7 @@ function SessionNoteForm({ onClose }: { onClose: () => void }) {
                 type="button"
                 onClick={() => setRiskFlag(t)}
                 className={cn(
-                  "flex-1 py-2.5 rounded-xl border font-sans text-xs transition-all cursor-none",
+                  "flex-1 py-2.5 rounded-xl border font-sans text-xs transition-all cursor-pointer",
                   riskFlag === t ? "font-medium" : "border-[#E8F2EE] text-[#3D5A54]/50 bg-white hover:border-[#B8D4C0]"
                 )}
                 style={riskFlag === t ? { borderColor: colors[t], background: bgs[t], color: colors[t] } : {}}
@@ -182,7 +183,18 @@ export default function StudentCasePage() {
   const [showNoteForm, setShowNoteForm] = useState(false);
   const [showOverride, setShowOverride] = useState(false);
   const [activeTab, setActiveTab]       = useState<"overview" | "timeline" | "assessments">("overview");
+  const [escalated, setEscalated]       = useState(false);
+  const [timeline, setTimeline]         = useState(STUDENT.timeline);
   const s = STUDENT;
+
+  const handleSaveNote = (note: string) => {
+    setTimeline([
+      // @ts-ignore
+      { date: "Just now", type: "session", label: "Session completed", risk: "YELLOW", note },
+      ...timeline
+    ]);
+    setActiveTab("timeline");
+  };
 
   return (
     <div className="flex flex-col gap-6 max-w-4xl mx-auto">
@@ -201,7 +213,7 @@ export default function StudentCasePage() {
               <RiskBadge level={s.risk} clinical pulse />
               <TrendIndicator trend={s.trend} />
             </div>
-            <p className="font-sans text-sm text-[#3D5A54]/40 mt-0.5">
+            <p className="font-sans text-sm text-[#3D5A54]/60 mt-0.5">
               CRI Score: <strong className="text-[#B03030]">{s.cri.toFixed(2)}</strong>
             </p>
           </div>
@@ -213,8 +225,8 @@ export default function StudentCasePage() {
           <Button id="override-priority" variant="ghost" size="sm" onClick={() => setShowOverride(true)}>
             Override
           </Button>
-          <Button id="escalate" variant="danger" size="sm">
-            Escalate
+          <Button id="escalate" variant="danger" size="sm" onClick={() => setEscalated(true)} disabled={escalated}>
+            {escalated ? "Escalated" : "Escalate"}
           </Button>
         </div>
       </div>
@@ -264,11 +276,13 @@ export default function StudentCasePage() {
             { label: "Academic stress",      value: "5 / 5",   sub: "Overwhelming",    color: "#B03030" },
             { label: "Social isolation",     value: "HIGH",    sub: "Concerning",      color: "#A0700A" },
             { label: "Q9 flag",              value: "YES",     sub: "Self-harm indicator", color: "#B03030" },
+            { label: "Assessment gap",       value: "12 days", sub: "Late response",   color: "#A0700A" },
+            { label: "Session attendance",   value: "MISSED",  sub: "Last session: 8 Mar", color: "#B03030" },
           ].map((item) => (
             <Card key={item.label} padding="sm">
-              <p className="font-sans text-xs text-[#3D5A54]/40">{item.label}</p>
+              <p className="font-sans text-xs text-[#3D5A54]/60">{item.label}</p>
               <p className="font-serif text-xl mt-1" style={{ color: item.color }}>{item.value}</p>
-              <p className="font-sans text-xs text-[#3D5A54]/40 mt-0.5">{item.sub}</p>
+              <p className="font-sans text-xs text-[#3D5A54]/60 mt-0.5">{item.sub}</p>
             </Card>
           ))}
         </div>
@@ -277,7 +291,7 @@ export default function StudentCasePage() {
       {activeTab === "timeline" && (
         <div className="animate-fade-up flex flex-col gap-0 relative">
           <div className="absolute left-5 top-5 bottom-5 w-px bg-[#E8F2EE]" />
-          {s.timeline.map((t, i) => (
+          {timeline.map((t, i) => (
             <div key={i} className="relative flex gap-5 pb-6">
               <div
                 className={cn(
@@ -308,7 +322,7 @@ export default function StudentCasePage() {
 
       {activeTab === "assessments" && (
         <Card className="animate-fade-up" padding="md">
-          <p className="font-sans text-sm text-[#3D5A54]/60 font-light">
+          <p className="font-sans text-sm text-[#3D5A54]/75 font-normal">
             Full assessment history for clinical review. This data is only visible to assigned counsellors.
           </p>
           <div className="mt-4 rounded-xl bg-[#F9FAFB] border border-[#E8F2EE] p-4">
@@ -329,19 +343,38 @@ export default function StudentCasePage() {
 
       {/* Session note modal */}
       <Modal open={showNoteForm} onClose={() => setShowNoteForm(false)} title="Log session note" size="lg">
-        <SessionNoteForm onClose={() => setShowNoteForm(false)} />
+        <SessionNoteForm onClose={() => setShowNoteForm(false)} onSave={handleSaveNote} />
       </Modal>
 
       {/* Override modal */}
       <Modal open={showOverride} onClose={() => setShowOverride(false)} title="Override priority">
-        <p className="font-sans font-light text-sm text-[#3D5A54]/70 mb-4 leading-relaxed">
-          You're deviating from the system's recommendation. Please provide a reason — this will be logged to the audit trail.
+        <p className="font-sans font-normal text-sm text-[#3D5A54]/80 mb-4 leading-relaxed">
+          You are deviating from the system's recommendation. Please complete this structured log for the audit trail.
         </p>
-        <textarea
-          rows={3}
-          placeholder="e.g. Student contacted directly, situation stable, discussed in last session..."
-          className="w-full rounded-xl border border-[#B8D4C0] bg-white px-4 py-3 font-sans text-sm text-[#3D5A54] placeholder:text-[#3D5A54]/30 resize-none focus:outline-none focus:border-[#7BA89A] focus:ring-2 focus:ring-[#7BA89A]/20 mb-4"
-        />
+        <div className="flex flex-col gap-4 mb-6">
+          <div className="flex gap-4">
+            <div className="flex-1 flex flex-col gap-1.5">
+              <label className="font-sans text-xs font-medium text-[#3D5A54]">System Priority</label>
+              <input type="text" readOnly value="RED (Rank 1)" className="w-full rounded-xl border border-[#E8F2EE] bg-[#FAFAFA] px-3 py-2 font-sans text-sm text-[#3D5A54]/50 outline-none" />
+            </div>
+            <div className="flex-1 flex flex-col gap-1.5">
+              <label className="font-sans text-xs font-medium text-[#3D5A54]">Override Action</label>
+              <select className="w-full rounded-xl border border-[#B8D4C0] bg-white px-3 py-2 font-sans text-sm text-[#3D5A54] outline-none">
+                <option>Deprioritize (Stable)</option>
+                <option>Escalate to Crisis Team</option>
+                <option>Transfer to Peer Support</option>
+              </select>
+            </div>
+          </div>
+          <div className="flex flex-col gap-1.5">
+            <label className="font-sans text-xs font-medium text-[#3D5A54]">Clinical Justification</label>
+            <textarea
+              rows={3}
+              placeholder="e.g. Student contacted directly, situation stable, discussed in last session..."
+              className="w-full rounded-xl border border-[#B8D4C0] bg-white px-4 py-3 font-sans text-sm text-[#3D5A54] placeholder:text-[#3D5A54]/30 resize-none focus:outline-none focus:border-[#7BA89A] focus:ring-2 focus:ring-[#7BA89A]/20"
+            />
+          </div>
+        </div>
         <div className="flex gap-3">
           <Button variant="ghost" onClick={() => setShowOverride(false)} className="flex-1">Cancel</Button>
           <Button variant="amber" onClick={() => setShowOverride(false)} className="flex-1" id="confirm-override">Log override</Button>
