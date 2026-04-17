@@ -9,14 +9,18 @@ import {
   useMotionValue,
 } from "framer-motion";
 import StatsSection from "@/components/landing/StatsSection";
+import { AnimatedHero } from "@/components/motion/AnimatedHero";
+import { MagneticHover } from "@/components/motion/Magnetic";
 
 // ── Fade-up variant for Framer Motion ───────────────────────────
+const springEase: [number, number, number, number] = [0.22, 1, 0.36, 1];
+
 const fadeUp = {
   hidden: { opacity: 0, y: 32 },
   visible: (i = 0) => ({
     opacity: 1,
     y: 0,
-    transition: { duration: 0.7, delay: i * 0.1, ease: [0.22, 1, 0.36, 1] },
+    transition: { duration: 0.7, delay: i * 0.1, ease: springEase },
   }),
 };
 
@@ -25,7 +29,7 @@ const fadeLeft = {
   visible: (i = 0) => ({
     opacity: 1,
     x: 0,
-    transition: { duration: 0.8, delay: i * 0.1, ease: [0.22, 1, 0.36, 1] },
+    transition: { duration: 0.8, delay: i * 0.1, ease: springEase },
   }),
 };
 
@@ -34,7 +38,7 @@ const fadeRight = {
   visible: (i = 0) => ({
     opacity: 1,
     x: 0,
-    transition: { duration: 0.8, delay: i * 0.1, ease: [0.22, 1, 0.36, 1] },
+    transition: { duration: 0.8, delay: i * 0.1, ease: springEase },
   }),
 };
 
@@ -43,7 +47,7 @@ const scaleIn = {
   visible: (i = 0) => ({
     opacity: 1,
     scale: 1,
-    transition: { duration: 0.6, delay: i * 0.1, ease: [0.22, 1, 0.36, 1] },
+    transition: { duration: 0.6, delay: i * 0.1, ease: springEase },
   }),
 };
 
@@ -267,11 +271,8 @@ export default function LandingPage() {
       <main className="snap-container relative">
         {/* ── Hero Section ──────────────────────────────────────── */}
         <section className="snap-section relative h-screen flex flex-col items-center justify-center overflow-hidden bg-[#FCFCFA] px-6">
-          {/* Ambient background — single, restrained */}
-          <div className="absolute inset-0 pointer-events-none">
-            <div className="absolute top-[-15%] left-[-8%] w-[50%] aspect-square rounded-full bg-sage/[0.06] blur-[120px]" />
-            <div className="absolute bottom-[-10%] right-[-5%] w-[40%] aspect-square rounded-full bg-haze/[0.05] blur-[100px]" />
-          </div>
+          {/* Premium animated background with flowing gradients */}
+          <AnimatedHero />
 
           <motion.div
             className="max-w-6xl mx-auto w-full relative z-10 grid lg:grid-cols-2 gap-20 items-center"
