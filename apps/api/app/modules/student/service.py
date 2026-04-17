@@ -4,11 +4,16 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
 
 from app.models.student_profile import StudentProfile
-from app.modules.student.schemas import StudentProfileUpdate, ConsentSubmit
+from app.modules.student.schemas import (
+    StudentProfileUpdate,
+    ConsentSubmit,
+    sanitize_name,
+    sanitize_input,
+    sanitize_phone,
+)
 
 
 class StudentService:
-
     async def _get_profile(self, db: AsyncSession, user_id: str) -> StudentProfile:
         result = await db.execute(
             select(StudentProfile).where(StudentProfile.user_id == user_id)
@@ -19,7 +24,7 @@ class StudentService:
         return profile
 
     # ------------------------------------------------------------------
-    # Profile
+    # Profile with optimistic locking
     # ------------------------------------------------------------------
     async def get_profile(self, db: AsyncSession, user_id: str) -> StudentProfile:
         return await self._get_profile(db, user_id)
@@ -28,12 +33,30 @@ class StudentService:
         self, db: AsyncSession, user_id: str, req: StudentProfileUpdate
     ) -> StudentProfile:
         profile = await self._get_profile(db, user_id)
+
+        # Optimistic locking check
+        if req.version is not None and req.version != profile.version:
+            raise HTTPException(
+                status_code=409,
+                detail="Profile was modified by another request. Please refresh and try again.",
+            )
+
         if req.full_name is not None:
-            profile.full_name = req.full_name
+            profile.full_name = sanitize_name(req.full_name)
         if req.phone is not None:
-            profile.phone = req.phone
+            profile.phone = sanitize_phone(req.phone)
         if req.guardian_contact is not None:
-            profile.guardian_contact = req.guardian_contact.model_dump()
+            gc = req.guardian_contact
+            profile.guardian_contact = {
+                "name": sanitize_name(gc.name),
+                "phone": sanitize_phone(gc.phone),
+                "relation": sanitize_input(gc.relation),
+            }
+
+        # Increment version
+        profile.version = (profile.version or 0) + 1
+        profile.updated_at = datetime.now(timezone.utc)
+
         await db.commit()
         await db.refresh(profile)
         return profile
@@ -46,7 +69,9 @@ class StudentService:
         return {
             "data_usage": (profile.consents or {}).get("data_usage"),
             "counseling": (profile.consents or {}).get("counseling"),
-            "emergency_escalation": (profile.consents or {}).get("emergency_escalation"),
+            "emergency_escalation": (profile.consents or {}).get(
+                "emergency_escalation"
+            ),
             "profile_status": profile.profile_status,
             "consent_flag": profile.consent_flag,
         }
@@ -68,9 +93,7 @@ class StudentService:
             }
 
         # Both required consents must be granted to activate profile
-        required_granted = (
-            req.data_usage.granted and req.counseling.granted
-        )
+        required_granted = req.data_usage.granted and req.counseling.granted
 
         profile.consents = consents
         profile.consent_flag = required_granted

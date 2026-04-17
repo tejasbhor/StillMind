@@ -1,50 +1,86 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import Card from "@/components/ui/Card";
 import Button from "@/components/ui/Button";
 import Input from "@/components/ui/Input";
 import Modal from "@/components/ui/Modal";
 import { cn } from "@/lib/cn";
+import { adminApi, type AdminCounselor } from "@/lib/api";
 
-const COUNSELORS = [
-  { id: "c1", name: "Dr. Priya Menon",    email: "p.menon@uni.edu",    slots: 10, active: true,  students: 31 },
-  { id: "c2", name: "Dr. Rohan Iyer",     email: "r.iyer@uni.edu",     slots: 8,  active: true,  students: 24 },
-  { id: "c3", name: "Ms. Kavya Sharma",   email: "k.sharma@uni.edu",   slots: 12, active: true,  students: 38 },
-  { id: "c4", name: "Dr. Anand Pillai",   email: "a.pillai@uni.edu",   slots: 10, active: false, students: 0  },
-];
+interface CounselorData extends AdminCounselor {
+  name?: string;
+}
 
 export default function AdminCounselorsPage() {
-  const [counselors, setCounselors] = useState(COUNSELORS);
+  const [counselors, setCounselors] = useState<AdminCounselor[]>([]);
+  const [loading, setLoading] = useState(true);
   const [showAdd, setShowAdd]       = useState(false);
   const [newName, setNewName]       = useState("");
   const [newEmail, setNewEmail]     = useState("");
   const [newSlots, setNewSlots]     = useState("10");
   const [adding, setAdding]         = useState(false);
 
-  const toggleActive = (id: string) =>
-    setCounselors((prev) =>
-      prev.map((c) => (c.id === id ? { ...c, active: !c.active } : c))
-    );
+  useEffect(() => {
+    const fetchCounselors = async () => {
+      try {
+        const res = await adminApi.getCounselors(100, 0);
+        setCounselors(res.data || []);
+      } catch (err) {
+        console.error("Failed to fetch counselors", err);
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchCounselors();
+  }, []);
+
+  const toggleActive = async (counselorId: string, currentStatus: boolean) => {
+    try {
+      if (currentStatus) {
+        await adminApi.deactivateCounselor(counselorId, "Admin action");
+      } else {
+        await adminApi.activateCounselor(counselorId);
+      }
+      setCounselors(prev => prev.map(c => 
+        c.counselor_id === counselorId ? { ...c, is_active: !currentStatus } : c
+      ));
+    } catch (err) {
+      console.error("Failed to toggle counselor status", err);
+    }
+  };
 
   const handleAdd = async () => {
+    if (!newName || !newEmail) return;
     setAdding(true);
-    await new Promise((r) => setTimeout(r, 800));
-    setCounselors((prev) => [
-      ...prev,
-      {
-        id: `c${prev.length + 1}`,
-        name: newName,
+    try {
+      const res = await adminApi.createCounselor({
         email: newEmail,
-        slots: parseInt(newSlots),
-        active: true,
-        students: 0,
-      },
-    ]);
-    setNewName(""); setNewEmail(""); setNewSlots("10");
-    setAdding(false);
-    setShowAdd(false);
+        full_name: newName,
+        max_slots_day: parseInt(newSlots) || 10
+      });
+      setCounselors(prev => [...prev, {
+        counselor_id: res.data?.counselor_id || `c${Date.now()}`,
+        full_name: newName,
+        email: newEmail,
+        max_slots_day: parseInt(newSlots) || 10,
+        is_active: true,
+        assigned_students: 0
+      }]);
+      setNewName(""); setNewEmail(""); setNewSlots("10");
+      setShowAdd(false);
+    } catch (err) {
+      console.error("Failed to create counselor", err);
+    } finally {
+      setAdding(false);
+    }
   };
+
+  if (loading) {
+    return <div className="p-8 text-center font-serif text-[#3D5A54]">Loading counselors...</div>;
+  }
+
+  const activeCount = counselors.filter(c => c.is_active).length;
 
   return (
     <div className="flex flex-col gap-6">
@@ -52,7 +88,7 @@ export default function AdminCounselorsPage() {
         <div>
           <h1 className="font-serif text-3xl text-[#3D5A54]">Counsellors</h1>
           <p className="font-sans font-normal text-sm text-[#3D5A54]/75 mt-1">
-            {counselors.filter((c) => c.active).length} active · {counselors.length} total
+            {activeCount} active · {counselors.length} total
           </p>
         </div>
         <Button id="add-counselor-btn" onClick={() => setShowAdd(true)}>
@@ -75,40 +111,40 @@ export default function AdminCounselorsPage() {
             <tbody>
               {counselors.map((c, i) => (
                 <tr
-                  key={c.id}
+                  key={c.counselor_id}
                   className={cn(
                     "border-b border-[#E8F2EE] transition-colors",
                     i % 2 === 0 ? "bg-white" : "bg-[#FAFCFA]",
                     "hover:bg-[#E8F2EE]/40"
                   )}
                 >
-                  <td className="px-5 py-4 font-sans text-sm font-medium text-[#3D5A54]">{c.name}</td>
+                  <td className="px-5 py-4 font-sans text-sm font-medium text-[#3D5A54]">{c.full_name}</td>
                   <td className="px-5 py-4 font-sans text-sm text-[#3D5A54]/75">{c.email}</td>
                   <td className="px-5 py-4">
-                    <span className="font-sans text-sm font-medium text-[#3D5A54]">{c.slots}</span>
+                    <span className="font-sans text-sm font-medium text-[#3D5A54]">{c.max_slots_day}</span>
                   </td>
-                  <td className="px-5 py-4 font-sans text-sm text-[#3D5A54]/75">{c.students}</td>
+                  <td className="px-5 py-4 font-sans text-sm text-[#3D5A54]/75">{c.assigned_students}</td>
                   <td className="px-5 py-4">
                     <span
                       className={cn(
                         "text-xs font-sans rounded-full px-2.5 py-1 border",
-                        c.active
+                        c.is_active
                           ? "bg-[#E8F2EE] text-[#3D5A54] border-[#B8D4C0]"
                           : "bg-[#FDEAEA] text-[#B03030] border-[#F5B8B8]"
                       )}
                     >
-                      {c.active ? "Active" : "Inactive"}
+                      {c.is_active ? "Active" : "Inactive"}
                     </span>
                   </td>
                   <td className="px-5 py-4">
                     <div className="flex gap-2">
                       <Button
                         size="sm"
-                        variant={c.active ? "danger" : "ghost"}
-                        onClick={() => toggleActive(c.id)}
-                        id={`toggle-counselor-${c.id}`}
+                        variant={c.is_active ? "danger" : "ghost"}
+                        onClick={() => toggleActive(c.counselor_id, c.is_active)}
+                        id={`toggle-counselor-${c.counselor_id}`}
                       >
-                        {c.active ? "Deactivate" : "Reactivate"}
+                        {c.is_active ? "Deactivate" : "Reactivate"}
                       </Button>
                     </div>
                   </td>

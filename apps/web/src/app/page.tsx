@@ -1,323 +1,299 @@
 "use client";
 
-import { useEffect, useRef } from "react";
+import { useEffect } from "react";
 import Link from "next/link";
 import StatsSection from "@/components/landing/StatsSection";
 
-// ── Scroll reveal hook ─────────────────────────────────────────────────────────
+// ── Readability-Focused Scroll Reveal ───────────────────────────
 function useScrollReveal() {
   useEffect(() => {
-    const elements = document.querySelectorAll(".reveal");
     const observer = new IntersectionObserver(
       (entries) => {
         entries.forEach((entry) => {
           if (entry.isIntersecting) {
             entry.target.classList.add("revealed");
-            observer.unobserve(entry.target);
           }
         });
       },
-      { threshold: 0.12 }
+      { threshold: 0.1, rootMargin: "0px 0px -50px 0px" }
     );
+
+    const elements = document.querySelectorAll(".reveal");
     elements.forEach((el) => observer.observe(el));
+    
     return () => observer.disconnect();
   }, []);
 }
-
-// ── Ambient orbs ───────────────────────────────────────────────────────────────
-const ORBS = [
-  { w: 420, h: 420, top: "-8%",  left: "-6%",  color: "#B8D4C0", anim: "animate-float-slow",   delay: "0s"    },
-  { w: 280, h: 280, top: "18%",  left: "72%",  color: "#C4D4E8", anim: "animate-float-medium", delay: "1.2s"  },
-  { w: 340, h: 340, top: "55%",  left: "-4%",  color: "#E8D4B0", anim: "animate-float-fast",   delay: "0.6s"  },
-  { w: 200, h: 200, top: "70%",  left: "80%",  color: "#B8D4C0", anim: "animate-float-slow",   delay: "2s"    },
-  { w: 260, h: 260, top: "35%",  left: "45%",  color: "#C4D4E8", anim: "animate-float-medium", delay: "0.3s"  },
-  { w: 160, h: 160, top: "5%",   left: "52%",  color: "#E8F2EE", anim: "animate-float-fast",   delay: "1.8s"  },
-];
-
-// ── How it works steps ─────────────────────────────────────────────────────────
-const STEPS = [
-  {
-    num: "01",
-    title: "Complete a short check-in",
-    body: "A few thoughtful questions about how you've been feeling. Takes about four minutes — no clinical language, no judgment.",
-  },
-  {
-    num: "02",
-    title: "We find you the right support",
-    body: "Our system quietly prioritises you based on how you're doing — ensuring those who need help most are seen first.",
-  },
-  {
-    num: "03",
-    title: "Connect with your counsellor",
-    body: "You'll be matched with a counsellor, given a slot, and gently guided through confirming your appointment.",
-  },
-  {
-    num: "04",
-    title: "Track your wellbeing over time",
-    body: "See your progress in calm, plain language. No scores, no graphs — just an honest reflection of how you're moving forward.",
-  },
-];
-
-// ── Role preview cards ─────────────────────────────────────────────────────────
-const ROLES = [
-  {
-    role: "Student",
-    headline: "Your wellbeing, your pace.",
-    description:
-      "Check in when you're ready. View your appointments, chat with your counsellor, and see how you're moving forward — all in plain language.",
-    accent: "#E8F2EE",
-    border: "#B8D4C0",
-    cta: "Student walkthrough →",
-  },
-  {
-    role: "Counsellor",
-    headline: "Focus on who needs you most.",
-    description:
-      "A clear priority queue, structured session notes, and full context for every student — so your limited hours go furthest.",
-    accent: "#FEF4E0",
-    border: "#E8D4B0",
-    cta: "Counsellor walkthrough →",
-  },
-  {
-    role: "Admin",
-    headline: "Full visibility, privacy intact.",
-    description:
-      "Monitor system health, configure slot policies, and review aggregated trends — without ever accessing individual clinical data.",
-    accent: "#E8EEF5",
-    border: "#C4D4E8",
-    cta: "Admin walkthrough →",
-  },
-];
-
-// ── Principles ─────────────────────────────────────────────────────────────────
-const PRINCIPLES = [
-  { icon: "◎", title: "Explainability over Black Box", body: "Every decision answers 'Why was this student classified this way?' No silent algorithms." },
-  { icon: "⊙", title: "Human-in-the-Loop",             body: "The system recommends — your counsellors decide. Always." },
-  { icon: "◑", title: "Resource Optimisation",          body: "Finite counselling slots go to students with the greatest need, fairly." },
-  { icon: "◐", title: "Privacy-First Design",           body: "Role-based access. Students never see scores. Admins never see notes." },
-];
 
 export default function LandingPage() {
   useScrollReveal();
 
   return (
-    <>
-      {/* ── Nav ─────────────────────────────────────────────────────────────── */}
-      <header className="fixed top-0 left-0 right-0 z-40 flex items-center px-8 py-5">
-        <div className="flex-1 flex items-center gap-2">
-          <img src="/logo.png" alt="StillMind Logo" className="h-[52px] w-auto mix-blend-multiply" />
-        </div>
-        <nav className="hidden md:flex flex-[2] justify-center items-center gap-8">
-          <a href="#how-it-works" className="font-sans text-sm font-medium text-[#3D5A54] hover:text-[#1C3530] transition-colors">How it works</a>
-          <a href="#roles"        className="font-sans text-sm font-medium text-[#3D5A54] hover:text-[#1C3530] transition-colors">Roles</a>
-          <Link href="/login"     className="font-sans text-sm font-medium text-[#3D5A54] hover:text-[#1C3530] transition-colors">Counsellor Portal</Link>
-        </nav>
-        <div className="flex-1 flex items-center justify-end gap-3">
-          <Link href="/login" className="btn-ghost text-sm px-5 py-2">
-            Sign in
+    <div className="bg-[#FCFCFA] min-h-screen selection:bg-teal/5 overflow-x-hidden text-teal antialiased font-sans">
+      {/* ── Navigation (High Contrast & Precise) ──────────────────── */}
+      <header className="fixed top-0 left-0 right-0 z-[100] px-6 py-6 group">
+        <div className="max-w-6xl mx-auto flex items-center justify-between glass py-3 px-8 rounded-full shadow-soft border-white/60 transition-all duration-500 group-hover:shadow-float">
+          <Link href="/" className="flex items-center gap-3 group/logo">
+            <div className="w-8 h-8 rounded-xl bg-teal flex items-center justify-center shadow-lg transition-transform group-hover/logo:scale-110">
+              <span className="text-white font-serif text-xl font-bold italic">S</span>
+            </div>
+            <span className="font-serif text-xl font-black tracking-tighter text-teal-dark">StillMind</span>
           </Link>
-          <Link href="/register" className="btn-primary text-sm px-5 py-2">
-            Register
-          </Link>
+          
+          <nav className="hidden lg:flex items-center gap-12">
+            {[
+              { label: "The Experience", href: "#experience" },
+              { label: "Our Story", href: "#principles" },
+              { label: "Partner Network", href: "#stats" }
+            ].map((item) => (
+              <a 
+                key={item.label} 
+                href={item.href} 
+                className="font-sans text-[11px] font-black uppercase tracking-[0.2em] text-teal/60 hover:text-teal transition-all"
+              >
+                {item.label}
+              </a>
+            ))}
+          </nav>
+
+          <div className="flex items-center gap-8">
+            <Link href="/login" className="font-sans text-[11px] font-black uppercase tracking-widest text-teal/80 hover:text-teal transition-all">
+              Sign In
+            </Link>
+            <Link href="/register" className="btn-primary !py-2.5 !px-8 !text-[11px] font-black uppercase tracking-widest shadow-md hover:shadow-float active:scale-95 transition-all">
+              Get Started
+            </Link>
+          </div>
         </div>
       </header>
 
-      <main className="relative overflow-hidden">
-
-        {/* ── Hero ──────────────────────────────────────────────────────────── */}
-        <section
-          className="relative min-h-screen flex flex-col items-center justify-center px-6 text-center"
-          style={{ background: "linear-gradient(160deg, #E8F2EE 0%, #F5F3EF 55%, #EAE7E1 100%)" }}
-        >
-          {/* Ambient orbs */}
-          {ORBS.map((orb, i) => (
-            <div
-              key={i}
-              aria-hidden
-              className={`orb ${orb.anim}`}
-              style={{
-                width: orb.w,
-                height: orb.h,
-                top: orb.top,
-                left: orb.left,
-                background: `radial-gradient(circle, ${orb.color} 0%, transparent 70%)`,
-                animationDelay: orb.delay,
-              }}
-            />
-          ))}
-
-          {/* Hero content */}
-          <div className="relative z-10 flex flex-col items-center gap-7 max-w-3xl mx-auto">
-            <span className="inline-block rounded-full border border-[#7BA89A] bg-white/80 px-4 py-1.5 font-sans text-xs font-medium text-[#3D5A54] tracking-wider uppercase animate-fade-in">
-              Campus mental health, rethought
-            </span>
-
-            <h1
-              className="font-serif text-[clamp(2.6rem,6vw,4.25rem)] leading-[1.12] text-[#1C3530] animate-fade-up"
-              style={{ animationDelay: "0.1s" }}
-            >
-              Your campus has<br />a quiet corner.
-            </h1>
-
-            <p
-              className="font-sans font-light text-base text-[#4A5E5A] max-w-xl leading-relaxed animate-fade-up"
-              style={{ animationDelay: "0.2s" }}
-            >
-              StillMind connects students who need support with counsellors who can help —
-              fairly, transparently, and without a waiting list you never knew you were on.
-            </p>
-
-            <div
-              className="flex flex-wrap items-center justify-center gap-3 animate-fade-up"
-              style={{ animationDelay: "0.3s" }}
-            >
-              <Link href="/register" className="btn-primary text-base px-8 py-3.5">
-                Begin your check-in
-              </Link>
-              <a href="#how-it-works" className="font-sans font-medium text-base px-8 py-3.5 rounded-full border-2 border-[#3D5A54] text-[#3D5A54] hover:bg-[#F5F3EF] transition-all">
-                See how it works
-              </a>
-            </div>
-
-            <p
-              className="font-sans text-xs font-medium text-[#6B7E7A] animate-fade-up"
-              style={{ animationDelay: "0.4s" }}
-            >
-              Free for enrolled students · No clinical labels · Human counsellors in the loop
-            </p>
+      <main className="relative">
+        {/* ── Hero Section (Meticulous Readability & Hierarchy) ──────── */}
+        <section className="relative h-screen flex flex-col items-center justify-center overflow-hidden bg-[#FCFCFA] px-6">
+          {/* Refined Ambient Background */}
+          <div className="absolute inset-0 z-0">
+            <div className="absolute top-[-10%] left-[-5%] w-[50%] aspect-square rounded-full bg-sage/5 blur-[120px]" />
+            <div className="absolute bottom-[-10%] right-[-5%] w-[40%] aspect-square rounded-full bg-haze/5 blur-[120px]" />
           </div>
 
-          {/* Scroll indicator */}
-          <div className="absolute bottom-10 left-1/2 -translate-x-1/2 flex flex-col items-center gap-2 animate-fade-in" style={{ animationDelay: "1s" }}>
-            <span className="font-sans text-xs font-normal text-[#3D5A54]/50">Scroll</span>
-            <div className="w-px h-10 bg-gradient-to-b from-[#B8D4C0] to-transparent" />
-          </div>
-        </section>
+          <div className="max-w-6xl mx-auto w-full relative z-10 grid lg:grid-cols-2 gap-24 items-center">
+            <div className="flex flex-col gap-10 animate-fade-in-up">
+              <div className="inline-flex items-center gap-3 px-4 py-1.5 rounded-full bg-white/80 border border-teal/10 w-fit backdrop-blur-sm shadow-sm">
+                <span className="flex h-2 w-2 rounded-full bg-sage animate-pulse" />
+                <span className="text-[10px] font-black uppercase tracking-[0.2em] text-teal/70">Now live for 2026 intake</span>
+              </div>
+              
+              <div className="flex flex-col gap-6">
+                <h1 className="font-serif text-5xl md:text-6xl lg:text-7xl leading-[1.05] tracking-tight text-teal-dark">
+                  Your campus <br /> has a <span className="italic text-sage font-medium">quiet</span> <br /> corner.
+                </h1>
+                <div className="w-16 h-[2px] bg-sage/40 rounded-full" />
+              </div>
 
-        {/* ── How it works ──────────────────────────────────────────────────── */}
-        <section id="how-it-works" className="py-28 px-6">
-          <div className="mx-auto max-w-5xl">
-            <div className="reveal text-center mb-16">
-              <p className="font-sans text-xs font-medium text-[#7BA89A] tracking-widest uppercase mb-3">Process</p>
-              <h2 className="font-serif text-[clamp(1.8rem,4vw,2.8rem)] text-[#3D5A54]">Simple by design.</h2>
-            </div>
+              <p className="font-sans text-lg md:text-xl text-teal/75 max-w-lg leading-relaxed font-medium">
+                We believe no student should face a waitlist in their darkest hour. 
+                StillMind connects you with immediate care, skipping the queue to find peace in minutes.
+              </p>
 
-            <div className="grid md:grid-cols-2 gap-6">
-              {STEPS.map((step, i) => (
-                <div
-                  key={step.num}
-                  className={`reveal card p-8 flex flex-col gap-4`}
-                  style={{ transitionDelay: `${i * 0.08}s` }}
-                >
-                  <span className="font-serif text-5xl text-[#B8D4C0]">{step.num}</span>
-                  <h3 className="font-serif text-xl text-[#3D5A54]">{step.title}</h3>
-                  <p className="font-sans font-normal text-[0.9375rem] text-[#3D5A54]/75 leading-relaxed">{step.body}</p>
+              <div className="flex flex-wrap items-center gap-10 pt-4">
+                <Link href="/register" className="btn-primary !py-5 !px-14 text-sm font-black uppercase tracking-[0.2em] shadow-lg hover:shadow-float hover:-translate-y-1 transition-all">
+                  Begin your check-in
+                </Link>
+                <div className="flex items-center gap-4 group cursor-pointer">
+                  <div className="w-12 h-12 rounded-full border border-teal/20 flex items-center justify-center text-teal shadow-soft group-hover:bg-teal group-hover:text-white transition-all transform group-hover:scale-110">
+                     <span className="ml-1">▶</span>
+                  </div>
+                  <span className="font-sans text-[11px] font-black uppercase tracking-[0.2em] text-teal/50 group-hover:text-teal transition-colors">Our Story</span>
                 </div>
-              ))}
-            </div>
-          </div>
-        </section>
-
-        {/* ── Stats ─────────────────────────────────────────────────────────── */}
-        <StatsSection />
-
-        {/* ── Principles ────────────────────────────────────────────────────── */}
-        <section id="principles" className="py-28 px-6 bg-[#E8F2EE]">
-          <div className="mx-auto max-w-5xl">
-            <div className="reveal text-center mb-16">
-              <p className="font-sans text-xs font-medium text-[#7BA89A] tracking-widest uppercase mb-3">Our commitments</p>
-              <h2 className="font-serif text-[clamp(1.8rem,4vw,2.8rem)] text-[#3D5A54]">Built on four foundations.</h2>
+              </div>
             </div>
 
-            <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-5">
-              {PRINCIPLES.map((p, i) => (
-                <div
-                  key={p.title}
-                  className="reveal flex flex-col gap-4 rounded-[20px] bg-white border border-[#B8D4C0] p-7"
-                  style={{ transitionDelay: `${i * 0.08}s` }}
-                >
-                  <span className="text-3xl text-[#7BA89A]">{p.icon}</span>
-                  <h3 className="font-serif text-lg text-[#3D5A54] leading-snug">{p.title}</h3>
-                  <p className="font-sans font-normal text-sm text-[#3D5A54]/75 leading-relaxed">{p.body}</p>
+            {/* Desktop Hero Visual (Meticulous White Space & Framing) */}
+            <div className="hidden lg:block relative">
+              <div className="relative z-10 rounded-[64px] overflow-hidden shadow-heavy aspect-[4/5] max-h-[68vh] group ml-auto transition-all duration-1000 border-[10px] border-white">
+                <img 
+                  src="/hero-abstract.png" 
+                  alt="The Quiet Corner" 
+                  className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-[10000ms]"
+                />
+                <div className="absolute inset-0 bg-gradient-to-t from-teal/40 via-transparent to-transparent opacity-30" />
+                
+                {/* Minimal Overlay Badge */}
+                <div className="absolute bottom-10 left-10">
+                   <div className="glass px-6 py-2.5 rounded-full border-white/40 shadow-card">
+                       <p className="font-sans text-[10px] font-black uppercase tracking-[0.3em] text-white">Find Peace First</p>
+                   </div>
                 </div>
-              ))}
+              </div>
+              {/* Architectural Frame Element */}
+              <div className="absolute -inset-10 border border-teal/[0.04] rounded-[80px] pointer-events-none" />
+            </div>
+          </div>
+
+          {/* Trusted Institution Bar (Enhanced Contrast) */}
+          <div className="absolute bottom-12 left-1/2 -translate-x-1/2 w-full max-w-6xl px-12 flex justify-between items-center bg-white/10 backdrop-blur-sm py-4">
+            <span className="font-sans text-[9px] font-black uppercase tracking-[0.5em] text-teal/40">Official Partners</span>
+            <div className="flex gap-16 items-center">
+               {["Standish", "Oxford", "Hartwell", "Lakewood"].map(u => (
+                 <span key={u} className="font-serif text-xl tracking-tighter italic font-bold text-teal/50 hover:text-teal transition-colors cursor-default">{u}</span>
+               ))}
+            </div>
+            <div className="flex flex-col items-center gap-2">
+               <span className="text-[8px] font-black tracking-[0.4em] text-teal/30">SCROLL</span>
+               <div className="w-px h-10 bg-gradient-to-b from-teal/30 to-transparent" />
             </div>
           </div>
         </section>
 
-        {/* ── Role cards ────────────────────────────────────────────────────── */}
-        <section id="roles" className="py-28 px-6">
-          <div className="mx-auto max-w-5xl">
-            <div className="reveal text-center mb-16">
-              <p className="font-sans text-xs font-medium text-[#7BA89A] tracking-widest uppercase mb-3">Who it's for</p>
-              <h2 className="font-serif text-[clamp(1.8rem,4vw,2.8rem)] text-[#3D5A54]">One platform. Three roles.</h2>
-            </div>
+        {/* ── Experience Section (Enhanced Readability) ────────────── */}
+        <section id="experience" className="min-h-screen flex items-center bg-[#152F2E] text-foam relative overflow-hidden">
+          {/* Dynamic Background */}
+          <div className="absolute inset-0">
+             <div className="absolute top-[20%] right-[-10%] w-[60%] aspect-square rounded-full bg-sage/10 blur-[150px]" />
+             <div className="absolute bottom-[-10%] left-[-5%] w-[40%] aspect-square rounded-full bg-white/5 blur-[120px]" />
+          </div>
 
-            <div className="grid md:grid-cols-3 gap-6">
-              {ROLES.map((r, i) => (
-                <div
-                  key={r.role}
-                  className="reveal flex flex-col gap-5 rounded-[24px] border p-8"
-                  style={{
-                    background: r.accent,
-                    borderColor: r.border,
-                    transitionDelay: `${i * 0.1}s`,
-                  }}
-                >
-                  <p className="font-sans text-xs font-medium tracking-widest uppercase text-[#3E5C52]">{r.role}</p>
-                  <h3 className="font-serif text-xl text-[#3D5A54]">{r.headline}</h3>
-                  <p className="font-sans font-normal text-sm text-[#3D5A54]/80 leading-relaxed flex-1">{r.description}</p>
-                  <span className="font-sans text-xs font-bold text-[#3E5C52]">{r.cta}</span>
+          <div className="max-w-6xl mx-auto px-8 w-full relative z-10 py-24">
+             <div className="grid lg:grid-cols-2 gap-32 items-center">
+                <div className="reveal">
+                   <span className="text-[11px] font-black uppercase tracking-[0.5em] text-sage mb-8 block">The Experience</span>
+                   <h2 className="font-serif text-5xl md:text-7xl leading-[1.05] mb-16 text-white tracking-tight">Clarity in <br /><span className="text-sage italic">every step.</span></h2>
+                   
+                   <div className="space-y-16">
+                      {[
+                        { title: "Immediate Connection", desc: "No more silent waiting. From the moment you check-in, our secure protocol works to find you the right professional help instantly." },
+                        { title: "Understandable Support", desc: "We translate complex assessment data into clear outcomes, ensuring that both you and your counselor have total clarity." },
+                        { title: "Lasting Progress", desc: "Experience 1:1 care that evolves. Track your mental wellbeing through high-impact check-ins that guide your healing journey." }
+                      ].map((item, idx) => (
+                        <div key={idx} className="group relative pl-20">
+                           <div className="absolute left-0 top-1 text-3xl font-serif text-sage/40 group-hover:text-sage transition-all italic duration-500">0{idx+1}</div>
+                           <h4 className="font-serif text-3xl mb-4 tracking-tight text-white/90 font-medium">{item.title}</h4>
+                           <p className="font-sans text-lg text-white/50 max-w-md leading-relaxed group-hover:text-white/70 transition-colors">{item.desc}</p>
+                        </div>
+                      ))}
+                   </div>
                 </div>
-              ))}
+
+                <div className="reveal">
+                   <div className="glass-dark aspect-square rounded-[80px] border border-white/10 flex flex-col items-center justify-center p-20 relative overflow-hidden group shadow-2xl">
+                      <div className="relative z-10 w-28 h-28 rounded-full bg-white/5 flex items-center justify-center mb-14 shadow-inner group-hover:scale-110 transition-transform duration-1000">
+                         <span className="text-5xl font-serif text-foam italic">S</span>
+                         <div className="absolute inset-[-10px] rounded-full border border-sage/30 animate-spin-slow" />
+                      </div>
+                      <h3 className="relative z-10 font-serif text-3xl mb-4 text-center text-white">Your Portal</h3>
+                      <p className="relative z-10 font-sans text-xs text-white/30 text-center uppercase tracking-[0.4em] mb-16">Encrypted • Real-time Protocol</p>
+                      
+                      <div className="relative z-10 flex flex-col gap-5 w-full">
+                         <div className="glass py-4 px-8 rounded-24 border-white/10 text-center shadow-lg">
+                            <span className="text-[11px] font-black uppercase tracking-widest text-white/80">Premium Check-in Interface</span>
+                         </div>
+                         <div className="glass py-4 px-8 rounded-24 border-white/10 text-center shadow-lg">
+                            <span className="text-[11px] font-black uppercase tracking-widest text-white/80">Direct Clinical Matchmaking</span>
+                         </div>
+                      </div>
+                      <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[400px] h-[400px] bg-sage/30 blur-[120px] pointer-events-none" />
+                   </div>
+                </div>
+             </div>
+          </div>
+        </section>
+
+        {/* ── Story Section (High-Readability Canvas) ──────────────── */}
+        <section id="principles" className="py-44 bg-white relative">
+          <div className="max-w-6xl mx-auto px-8 relative z-10">
+            <div className="reveal text-center mb-36 max-w-3xl mx-auto">
+               <span className="text-[10px] font-black uppercase tracking-[0.5em] text-teal/40 mb-8 block font-sans">Our Outcome Philosophy</span>
+               <h2 className="font-serif text-5xl md:text-7xl leading-tight text-teal-dark tracking-tighter">Technology that <br /><span className="italic text-sage font-medium opacity-80">prioritizes you.</span></h2>
+               <p className="font-sans text-xl text-teal/70 mt-12 leading-relaxed font-medium">We built StillMind to bridge the gap between human empathy and intelligent scale, ensuring that every student is heard.</p>
+            </div>
+
+            <div className="grid md:grid-cols-3 gap-16">
+               {[
+                 { t: "Radical Clarity", d: "No more clinical jargon or complex reports. We translate medical assessments into a language of peace." },
+                 { t: "Fairness First", d: "Our prioritization logic is ethical, transparent, and built to find those who need help most." },
+                 { t: "Total Privacy", d: "Role-based encryption ensures your personal sessions remain between you and your counselor." }
+               ].map((p, i) => (
+                 <div key={i} className="reveal group flex flex-col items-center text-center gap-10 cursor-default">
+                    <div className="w-20 h-20 rounded-[28px] bg-foam flex items-center justify-center text-3xl font-serif text-teal italic group-hover:bg-teal group-hover:text-white transition-all duration-700 shadow-sm group-hover:shadow-lg">0{i+1}</div>
+                    <div className="flex flex-col gap-6">
+                       <h3 className="font-serif text-3xl tracking-tight text-teal-dark">{p.t}</h3>
+                       <p className="font-sans text-[17px] text-teal/65 leading-relaxed max-w-xs mx-auto font-medium">{p.d}</p>
+                    </div>
+                 </div>
+               ))}
             </div>
           </div>
         </section>
 
-        {/* ── CTA ───────────────────────────────────────────────────────────── */}
-        <section className="py-28 px-6">
-          <div className="mx-auto max-w-2xl reveal text-center flex flex-col items-center gap-7">
-            <div
-              className="w-16 h-16 rounded-full flex items-center justify-center"
-              style={{ background: "radial-gradient(circle, #B8D4C0, #7BA89A)" }}
-            >
-              <span className="text-white text-2xl">◎</span>
-            </div>
-            <h2 className="font-serif text-[clamp(1.8rem,4vw,2.8rem)] text-[#3D5A54]">
-              Ready to find your quiet corner?
-            </h2>
-            <p className="font-sans font-normal text-[#3D5A54]/75 leading-relaxed max-w-md">
-              StillMind is available to all enrolled students at participating institutions.
-              Registration takes two minutes.
-            </p>
-            <div className="flex flex-wrap items-center justify-center gap-3">
-              <Link href="/register" className="btn-primary text-base px-8 py-3.5">
-                Begin your check-in
-              </Link>
-              <Link href="/login" className="btn-ghost text-base px-8 py-3.5">
-                Sign in
-              </Link>
-            </div>
+        <section id="stats">
+           <StatsSection />
+        </section>
+
+        {/* ── Stakeholder Outcomes (Impeccable Contrast) ──────────── */}
+        <section id="social" className="py-44 px-8 bg-[#FBFBFA]">
+           <div className="max-w-6xl mx-auto flex flex-col items-center">
+              <div className="reveal text-center mb-32 max-w-4xl mx-auto">
+                 <h2 className="font-serif text-5xl md:text-7xl leading-tight tracking-tight text-teal-dark">Outcome driven for <br/><span className="text-sage italic font-medium">everyone.</span></h2>
+                 <p className="font-sans text-xl text-teal/60 mt-8 font-medium italic">Empowering the three pillars of academic mental health.</p>
+              </div>
+              
+              <div className="grid lg:grid-cols-3 gap-16 w-full">
+                 {[
+                   { r: "Students", h: "Peace on your terms.", d: "Skip the waiting room. Access therapeutic help precisely when you need it, skipping the months of uncertainty." },
+                   { r: "Counselors", h: "Impact where it matters.", d: "Focus on what you do best—healing. Let StillMind handle the triage, ranking, and administrative overhead." },
+                   { r: "Institutions", h: "Resource optimization.", d: "Manage high-volume campus needs with an ethical protocol for intelligent resource allocation." }
+                 ].map((role, i) => (
+                   <div key={i} className="reveal group relative overflow-hidden glass p-16 rounded-[80px] border border-white transition-all duration-1000 cursor-pointer shadow-soft hover:shadow-float-lg bg-white/40">
+                      <div className="relative z-10 flex flex-col items-center gap-14 text-center">
+                         <span className="text-[11px] font-black uppercase tracking-[0.5em] text-teal/50 group-hover:text-teal transition-colors font-sans">{role.r}</span>
+                         <div className="flex flex-col gap-6">
+                            <h3 className="font-serif text-4xl leading-[1.1] tracking-tight text-teal">{role.h}</h3>
+                            <p className="font-sans text-[17px] text-teal/65 leading-relaxed max-w-xs mx-auto font-medium">{role.d}</p>
+                         </div>
+                         <div className="w-14 h-14 rounded-full border border-teal/10 flex items-center justify-center text-2xl group-hover:bg-teal group-hover:text-white transition-all transform group-hover:scale-110 shadow-sm">↗</div>
+                      </div>
+                      <div className="absolute top-[-20%] right-[-20%] w-64 h-64 bg-teal/[0.03] rounded-full group-hover:scale-[3] transition-transform duration-[3000ms] blur-3xl" />
+                   </div>
+                 ))}
+              </div>
+           </div>
+        </section>
+
+        {/* ── Conclusion (Meticulous Statement) ───────────────────── */}
+        <section className="h-[95vh] flex items-center justify-center px-8 relative overflow-hidden bg-white">
+          <div className="reveal relative z-10 text-center max-w-3xl mx-auto flex flex-col items-center">
+             <div className="w-20 h-20 rounded-[28px] bg-teal flex items-center justify-center shadow-heavy mb-16 transform hover:rotate-12 transition-transform duration-700">
+                <span className="text-white font-serif text-4xl font-black italic">S</span>
+             </div>
+             <h2 className="font-serif text-6xl md:text-8xl leading-[0.9] tracking-tighter mb-14 text-teal-dark">
+                Begin your <br /><span className="italic text-sage font-medium opacity-90">fresh start.</span>
+             </h2>
+             <p className="font-sans text-2xl text-teal/60 max-w-lg mb-16 leading-relaxed font-medium">Trusted by world-class educational leaders. Join our institutional network and redefine student support.</p>
+             <div className="flex flex-col sm:flex-row gap-8 w-full sm:w-auto">
+                <Link href="/register" className="btn-primary !px-20 !py-6 text-sm shadow-float uppercase tracking-[0.3em] font-black hover:scale-105 active:scale-95 transition-all">Begin Check-in</Link>
+             </div>
           </div>
+          <div className="absolute inset-x-0 bottom-0 h-1/4 bg-sage/[0.02] -skew-y-2 origin-bottom-right" />
         </section>
       </main>
 
-      {/* ── Footer ──────────────────────────────────────────────────────────── */}
-      <footer className="border-t border-[#E8F2EE] px-8 py-10">
-        <div className="mx-auto max-w-5xl flex flex-col md:flex-row items-center justify-between gap-6">
-          <div className="flex items-center gap-2">
-            <img src="/logo.png" alt="StillMind Logo" className="h-12 w-auto mix-blend-multiply" />
-          </div>
-          <p className="font-sans text-xs font-normal text-[#3D5A54]/50 text-center">
-            A rule-based, explainable mental health triage platform · v1.0 · April 2026
-          </p>
+      <footer className="py-28 px-10 border-t border-foam bg-[#FCFCFA] relative z-10">
+        <div className="max-w-6xl mx-auto flex flex-col md:flex-row justify-between items-center gap-20">
           <div className="flex items-center gap-6">
-            <a href="#" className="font-sans text-xs text-[#3D5A54]/40 hover:text-[#7BA89A] transition-colors">Privacy</a>
-            <a href="#" className="font-sans text-xs text-[#3D5A54]/40 hover:text-[#7BA89A] transition-colors">Terms</a>
-            <a href="#" className="font-sans text-xs text-[#3D5A54]/40 hover:text-[#7BA89A] transition-colors">Contact</a>
+             <span className="font-serif text-3xl font-black tracking-tighter text-teal-dark">StillMind</span>
+             <div className="h-6 w-[2px] bg-teal/10" />
+             <span className="text-[10px] font-black uppercase tracking-[0.5em] text-teal/40">Ethical Framework • v1.0</span>
+          </div>
+          <div className="flex gap-16 font-sans text-[10px] font-black uppercase tracking-[0.3em] text-teal/50">
+             <a href="#" className="hover:text-teal transition-colors">Privacy Privacy</a>
+             <a href="#" className="hover:text-teal transition-colors">Ethics Protocol</a>
+             <a href="#" className="hover:text-teal transition-colors">Institutional Contact</a>
           </div>
         </div>
+        <div className="max-w-6xl mx-auto mt-20 text-center">
+            <p className="text-[10px] font-black uppercase tracking-[0.8em] text-teal/20">Secure • Scalable • Clinical Integrity • London 2026</p>
+        </div>
       </footer>
-    </>
+    </div>
   );
 }

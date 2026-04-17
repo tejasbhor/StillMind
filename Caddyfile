@@ -5,7 +5,12 @@
 # Local dev or production domain
 {$DOMAIN:localhost} {
     # Route API traffic to the backend
-    handle_path /api/* {
+    handle /api/* {
+        reverse_proxy backend:8000
+    }
+
+    # Route Socket.IO traffic to the backend
+    handle /socket.io/* {
         reverse_proxy backend:8000
     }
     

@@ -1,54 +1,9 @@
-version: "3.9"
+# Local development: Docker db/redis only
+# Run locally: Terminal 1: cd apps\api && uv run uvicorn...
+#                 Terminal 2: cd apps\web && npm run dev...
 
 services:
-  caddy:
-    image: caddy:2-alpine
-    container_name: stillmind_caddy
-    restart: unless-stopped
-    ports:
-      - "80:80"
-      - "443:443"
-    volumes:
-      - ./Caddyfile:/etc/caddy/Caddyfile
-      - caddy_data:/data
-      - caddy_config:/config
-    depends_on:
-      - frontend
-      - backend
-
-  frontend:
-    build:
-      context: .
-      dockerfile: apps/web/Dockerfile
-    container_name: stillmind_frontend
-    restart: unless-stopped
-    environment:
-      - NODE_ENV=production
-      - NEXT_PUBLIC_API_URL=http://localhost/api/v1
-    ports:
-      - "3000:3000"
-    depends_on:
-      - backend
-
-  backend:
-    build:
-      context: apps/api
-      dockerfile: Dockerfile
-    container_name: stillmind_backend
-    restart: unless-stopped
-    env_file:
-      - apps/api/.env
-    environment:
-      - DATABASE_URL=postgresql+asyncpg://stillmind:stillmind_secret@db:5432/stillmind
-      - REDIS_URL=redis://redis:6379/0
-    ports:
-      - "8000:8000"
-    depends_on:
-      db:
-        condition: service_healthy
-      redis:
-        condition: service_healthy
-
+  # Database - PostgreSQL
   db:
     image: postgres:16-alpine
     container_name: stillmind_db
@@ -67,6 +22,7 @@ services:
       timeout: 5s
       retries: 5
 
+  # Cache - Redis
   redis:
     image: redis:7-alpine
     container_name: stillmind_redis
@@ -80,6 +36,53 @@ services:
       interval: 10s
       timeout: 5s
       retries: 5
+
+  # API Backend
+  backend:
+    build: 
+      context: ./apps/api
+      dockerfile: Dockerfile
+    container_name: stillmind_api
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    environment:
+      - DATABASE_URL=postgresql+asyncpg://stillmind:stillmind_secret@db:5432/stillmind
+      - REDIS_URL=redis://redis:6379/0
+      - ENVIRONMENT=production
+    ports:
+      - "8000:8000"
+
+  # Web Frontend
+  frontend:
+    build:
+      context: ./apps/web
+      dockerfile: Dockerfile
+    container_name: stillmind_web
+    restart: unless-stopped
+    ports:
+      - "3000:3000"
+    environment:
+      - NEXT_PUBLIC_API_URL=/api/v1
+
+  # Caddy Reverse Proxy
+  caddy:
+    image: caddy:2-alpine
+    container_name: stillmind_gateway
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile
+      - caddy_data:/data
+      - caddy_config:/config
+    depends_on:
+      - backend
+      - frontend
 
 volumes:
   postgres_data:

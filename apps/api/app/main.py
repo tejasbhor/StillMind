@@ -4,9 +4,15 @@ from fastapi import FastAPI, Request, status
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from pydantic import ValidationError
+from slowapi import Limiter, _rate_limit_exceeded_handler
+from slowapi.util import get_remote_address
+from slowapi.errors import RateLimitExceeded
+from slowapi.middleware import SlowAPIMiddleware
 
 from app.core.config import settings
 from app.core.responses import error_response
+
+limiter = Limiter(key_func=get_remote_address, default_limits=["60/minute"])
 
 # Routers
 from app.modules.auth.router import router as auth_router
@@ -22,6 +28,9 @@ from app.modules.dashboard.router import admin_router as dash_a_router
 from app.modules.audit.router import router as audit_router
 from app.modules.chat.router import router as chat_router
 from app.modules.chat.socket import socket_app
+from app.modules.notifications.router import router as notifications_router
+from app.modules.admin.router import router as admin_router
+from app.modules.internal.router import router as internal_router
 
 log = structlog.get_logger(__name__)
 
@@ -53,6 +62,11 @@ def create_app() -> FastAPI:
         allow_headers=["*"],
     )
 
+    # Rate limiting
+    app.state.limiter = limiter
+    app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
+    app.add_middleware(SlowAPIMiddleware)
+
     # ----------------------------------------------------------------
     # Global exception handlers
     # ----------------------------------------------------------------
@@ -64,7 +78,9 @@ def create_app() -> FastAPI:
         ]
         return JSONResponse(
             status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
-            content=error_response("VALIDATION_ERROR", "Request validation failed", details),
+            content=error_response(
+                "VALIDATION_ERROR", "Request validation failed", details
+            ),
         )
 
     @app.exception_handler(Exception)
@@ -86,18 +102,22 @@ def create_app() -> FastAPI:
     app.include_router(counselor_router, prefix=prefix)
     app.include_router(allocation_router, prefix=prefix)
     app.include_router(session_router, prefix=prefix)
-    
+
     # Dashboards
     app.include_router(dash_c_router, prefix=prefix)
     app.include_router(dash_s_router, prefix=prefix)
     app.include_router(dash_a_router, prefix=prefix)
 
-    # Chat & Audit
+    # Chat, Notifications, Admin, Internal & Audit
     app.include_router(chat_router, prefix=prefix)
+    app.include_router(notifications_router, prefix=prefix)
+    app.include_router(admin_router, prefix=prefix)
+    app.include_router(internal_router, prefix=prefix)
     app.include_router(audit_router, prefix=prefix)
 
     # Health check
     @app.get("/health", tags=["System"])
+    @app.get(f"{prefix}/health", tags=["System"])
     async def health():
         return {"status": "ok", "version": settings.APP_VERSION}
 
@@ -105,5 +125,6 @@ def create_app() -> FastAPI:
     app.mount("/socket.io", socket_app)
 
     return app
+
 
 app = create_app()

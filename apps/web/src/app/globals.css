@@ -1,6 +1,6 @@
 @import "tailwindcss";
 
-@theme inline {
+@theme {
   /* ── Colour Palette ────────────────────────────────── */
   --color-sage: #7BA89A;
   --color-sage-light: #9DBFB3;
@@ -59,10 +59,36 @@ body {
   background-color: #F5F3EF;
   color: #3D5A54;
   font-family: "DM Sans", system-ui, sans-serif;
-  font-weight: 400; /* Increased from 300 for WCAG visibility */
-  line-height: 1.65;
-  cursor: auto;
+  font-weight: 400;
+  line-height: 1.7;
+  cursor: default;
   overflow-x: hidden;
+  font-size: 16px;
+}
+
+/* ── Typography ─────────────────────────────────────────── */
+h1, h2, h3 {
+  line-height: 1.3;
+}
+
+p {
+  line-height: 1.7;
+}
+
+/* Larger, readable text sizes */
+text-xs { font-size: 0.8125rem; }
+text-sm { font-size: 0.9375rem; }
+text-base { font-size: 1.0625rem; }
+text-lg { font-size: 1.1875rem; }
+text-xl { font-size: 1.375rem; }
+text-2xl { font-size: 1.625rem; }
+text-3xl { font-size: 2rem; }
+text-4xl { font-size: 2.5rem; }
+
+/* Focus states for accessibility */
+*:focus-visible {
+  outline: 2px solid #7BA89A;
+  outline-offset: 2px;
 }
 
 /* ── Selection ─────────────────────────────────────────── */
@@ -78,8 +104,36 @@ body {
 ::-webkit-scrollbar-thumb:hover { background: #7BA89A; }
 
 /* ── Typography Helpers ────────────────────────────────── */
-.font-serif { font-family: "DM Serif Display", Georgia, serif; }
 .font-sans  { font-family: "DM Sans", system-ui, sans-serif; }
+
+/* ── Glassmorphism ─────────────────────────────────────── */
+.glass {
+  background: rgba(255, 255, 255, 0.45);
+  backdrop-filter: blur(12px) saturate(180%);
+  -webkit-backdrop-filter: blur(12px) saturate(180%);
+  border: 1px solid rgba(255, 255, 255, 0.3);
+}
+
+.glass-dark {
+  background: rgba(61, 90, 84, 0.08);
+  backdrop-filter: blur(12px) saturate(160%);
+  -webkit-backdrop-filter: blur(12px) saturate(160%);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.text-gradient {
+  background: linear-gradient(135deg, #1C3530 0%, #3D5A54 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+.text-gradient-sage {
+  background: linear-gradient(135deg, #7BA89A 0%, #5C8A7B 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
 
 /* ── Animations ────────────────────────────────────────── */
 
@@ -238,6 +292,26 @@ body {
 }
 .btn-primary:hover  { background-color: #5C8A7B; box-shadow: 0 4px 16px rgba(123,168,154,0.35); }
 .btn-primary:active { transform: scale(0.97); }
+
+.btn-outline {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  background: transparent;
+  color: #3D5A54;
+  font-family: "DM Sans", sans-serif;
+  font-weight: 500;
+  font-size: 0.9375rem;
+  padding: 0.65rem 1.75rem;
+  border-radius: var(--radius-full);
+  border: 1.5px solid #7BA89A;
+  cursor: pointer;
+  transition: all 0.2s ease, transform 0.1s ease;
+  text-decoration: none;
+}
+.btn-outline:hover  { background-color: #3D5A54; color: #ffffff; border-color: #3D5A54; }
+.btn-outline:active { transform: scale(0.97); }
 
 .btn-ghost {
   display: inline-flex;

@@ -1,4 +1,5 @@
 """Standard response envelope used across all endpoints (PRD §10.2)."""
+
 import uuid
 from datetime import datetime, timezone
 from typing import Any, Optional
@@ -19,7 +20,7 @@ def success_response(
     return {
         "success": True,
         "message": message,
-        "data": data or {},
+        "data": data if data is not None else {},
         "meta": meta or _meta(),
     }
 

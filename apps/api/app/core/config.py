@@ -2,6 +2,7 @@ from pydantic_settings import BaseSettings
 from pydantic import field_validator
 from typing import List
 import secrets
+import os
 
 
 class Settings(BaseSettings):
@@ -11,8 +12,14 @@ class Settings(BaseSettings):
     DEBUG: bool = False
     ENVIRONMENT: str = "development"
 
-    # Security
-    SECRET_KEY: str = secrets.token_urlsafe(32)
+    # ── Security ──────────────────────────────────────────────────────────────────
+    # SECRET_KEY MUST be set via env var in production.
+    # Auto-generation only allowed in DEBUG mode for local development.
+    SECRET_KEY: str = (
+        secrets.token_urlsafe(32)
+        if os.getenv("DEBUG", "0").lower() in ("1", "true")
+        else os.getenv("SECRET_KEY", "")
+    )
     JWT_ALGORITHM: str = "HS256"
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 60
     REFRESH_TOKEN_EXPIRE_DAYS: int = 7
@@ -21,7 +28,9 @@ class Settings(BaseSettings):
     INTERNAL_SERVICE_KEY: str = secrets.token_urlsafe(32)
 
     # Database
-    DATABASE_URL: str = "postgresql+asyncpg://stillmind:stillmind_secret@localhost:5432/stillmind"
+    DATABASE_URL: str = (
+        "postgresql+asyncpg://stillmind:stillmind_secret@localhost:5432/stillmind"
+    )
     DB_POOL_SIZE: int = 10
     DB_MAX_OVERFLOW: int = 20
 
@@ -38,7 +47,12 @@ class Settings(BaseSettings):
     SMTP_USE_TLS: bool = True
 
     # CORS
-    CORS_ORIGINS: List[str] = ["http://localhost:3000"]
+    CORS_ORIGINS: List[str] = [
+        "http://localhost:3000",
+        "http://127.0.0.1:3000",
+        "http://localhost:8001",
+        "http://127.0.0.1:8001",
+    ]
 
     # Rate limiting (requests per minute)
     RATE_LIMIT_LOGIN: int = 10
@@ -73,3 +87,9 @@ class Settings(BaseSettings):
 
 
 settings = Settings()
+
+if not settings.DEBUG and not settings.SECRET_KEY:
+    raise RuntimeError(
+        "SECRET_KEY must be set via environment variable in production. "
+        "Auto-generation is only allowed when DEBUG=1."
+    )

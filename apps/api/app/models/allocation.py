@@ -18,6 +18,7 @@ class Allocation(Base):
         SAEnum(
             "PENDING_RANKING", "ASSIGNED", "CONFIRMED", "DECLINED",
             "EXPIRED", "RELEASED", "REASSIGNED", "COMPLETED",
+            "RESCHEDULING", "CANCELLED",
             name="allocation_status",
         ),
         nullable=False,
@@ -32,3 +33,4 @@ class Allocation(Base):
     version: Mapped[int] = mapped_column(Integer, default=1, nullable=False)
 
     created_at: Mapped[object] = mapped_column(TIMESTAMP(timezone=True), server_default=func.now())
+    completed_at: Mapped[object | None] = mapped_column(TIMESTAMP(timezone=True), nullable=True)

@@ -30,9 +30,7 @@ async def confirm_allocation_slot(
         alloc = await _svc.confirm_allocation(db, user.id, req.idempotency_key)
         return success_response(message="Allocation confirmed successfully.")
     except Exception as e:
-        import traceback
-        traceback.print_exc()
-        return error_response(str(e), 400)
+        return error_response("ALLOCATION_ERROR", str(e))
 
 @router.post("/decline", response_model=dict, summary="Decline an assigned slot")
 async def decline_allocation_slot(
@@ -43,5 +41,17 @@ async def decline_allocation_slot(
     try:
         alloc = await _svc.decline_allocation(db, user.id, req.idempotency_key)
         return success_response(message="Allocation declined. Slot released.")
+    except Exception as e:
+        return error_response("ALLOCATION_ERROR", str(e))
+
+@router.post("/reschedule", response_model=dict, summary="Request rescheduling of an assigned slot")
+async def reschedule_allocation_slot(
+    req: AllocationConfirmRequest,
+    user=Depends(require_student),
+    db: AsyncSession = Depends(get_db)
+):
+    try:
+        alloc = await _svc.reschedule_allocation(db, user.id, req.idempotency_key)
+        return success_response(message="Reschedule requested. You are back in the priority queue.")
     except Exception as e:
         return error_response(str(e), 400)

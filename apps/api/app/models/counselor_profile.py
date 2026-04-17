@@ -12,6 +12,8 @@ class CounselorProfile(Base):
     user_id: Mapped[str] = mapped_column(String(36), ForeignKey("users.id", ondelete="CASCADE"), nullable=False, unique=True, index=True)
     full_name: Mapped[str | None] = mapped_column(Text)
     max_slots_day: Mapped[int] = mapped_column(Integer, default=10)
+    max_active_cases: Mapped[int] = mapped_column(Integer, default=10)  # Concurrent case load limit
+    current_active_cases: Mapped[int] = mapped_column(Integer, default=0)  # Currently assigned cases
     working_hours: Mapped[dict | None] = mapped_column(JSONB)
     # {start: "09:00", end: "17:00", timezone: "Asia/Kolkata"}
     is_active: Mapped[bool] = mapped_column(Boolean, default=True)

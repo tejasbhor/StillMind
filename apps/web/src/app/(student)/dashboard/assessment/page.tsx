@@ -3,6 +3,7 @@
 import { useState, useEffect } from "react";
 import Button from "@/components/ui/Button";
 import { cn } from "@/lib/cn";
+import { api } from "@/lib/api";
 import {
   PHQ9_QUESTIONS,
   PHQ9_Q9_WARNING,
@@ -71,8 +72,8 @@ function RadioOption({
       type="button"
       onClick={onSelect}
       className={cn(
-        "relative overflow-hidden w-full text-left flex items-center gap-4 rounded-xl border px-5 py-3.5",
-        "font-sans text-sm transition-all duration-200 cursor-none",
+        "relative overflow-hidden w-full text-left flex items-center gap-4 rounded-xl border px-5 py-4",
+        "font-sans text-base transition-all duration-200",
         selected
           ? "bg-[#E8F2EE] border-[#7BA89A] text-[#3D5A54] font-medium"
           : "bg-white border-[#E8F2EE] text-[#3D5A54]/70 hover:border-[#B8D4C0] hover:bg-[#F5F3EF]"
@@ -86,7 +87,7 @@ function RadioOption({
       >
         {selected && <span className="w-2 h-2 rounded-full bg-white" />}
       </span>
-      <span className="text-xs text-[#3D5A54]/40 mr-1 font-mono">{value}</span>
+      <span className="text-sm text-[#3D5A54]/40 mr-1 font-mono">{value}</span>
       {label}
     </button>
   );
@@ -205,20 +206,41 @@ export default function AssessmentPage() {
 
   const handleSubmit = async () => {
     setSubmitting(true);
-    await new Promise((r) => setTimeout(r, 1500));
-    // Mock CRI computation — in reality: POST /students/me/assessments
-    const phq9Total = data.phq9.reduce((a, b) => a + Math.max(b, 0), 0);
-    const gad7Total = data.gad7.reduce((a, b) => a + Math.max(b, 0), 0);
-    const q9Flag    = (data.phq9[8] ?? 0) >= 1;
-    if (q9Flag || phq9Total > 16 || gad7Total > 12) {
-      setResult("RED");
-    } else if (phq9Total > 9 || gad7Total > 7) {
-      setResult("YELLOW");
-    } else {
-      setResult("GREEN");
+    try {
+      // Transform arrays back to objects for schema
+      const phq9Obj: Record<string, number> = {};
+      data.phq9.forEach((v, i) => { phq9Obj[`q${i + 1}`] = v; });
+
+      const gad7Obj: Record<string, number> = {};
+      data.gad7.forEach((v, i) => { gad7Obj[`q${i + 1}`] = v; });
+
+      const response = await api.post<any>("/students/me/assessments", {
+        phq9: phq9Obj,
+        gad7: gad7Obj,
+        sleep_score: data.sleep || 3,
+        academic_stress_score: data.stress || 3,
+        social_isolation_level: data.isolation || "MEDIUM"
+      });
+
+      // Calculate result for UI display (matched with backend logic ideally)
+      const phq9Total = data.phq9.reduce((a, b) => a + Math.max(b, 0), 0);
+      const gad7Total = data.gad7.reduce((a, b) => a + Math.max(b, 0), 0);
+      const q9Flag    = (data.phq9[8] ?? 0) >= 1;
+      
+      if (q9Flag || phq9Total > 16 || gad7Total > 12) {
+        setResult("RED");
+      } else if (phq9Total > 9 || gad7Total > 7) {
+        setResult("YELLOW");
+      } else {
+        setResult("GREEN");
+      }
+      setStep("result");
+    } catch (err) {
+      console.error("Failed to submit assessment", err);
+      alert("Something went wrong with submission. Please try again.");
+    } finally {
+      setSubmitting(false);
     }
-    setStep("result");
-    setSubmitting(false);
   };
 
   const currentAnswer = (step === "phq9" || step === "gad7") ? currentAnswers[questionIndex] : -1;
@@ -235,13 +257,13 @@ export default function AssessmentPage() {
           className="animate-scale-in max-w-md w-full rounded-[24px] border p-10 flex flex-col items-center gap-6 text-center"
           style={{ background: r.bg, borderColor: r.border }}
         >
-          <div className="w-16 h-16 rounded-full flex items-center justify-center"
+          <div className="w-20 h-20 rounded-full flex items-center justify-center"
             style={{ background: r.border }}>
-            <span className="text-3xl">◎</span>
+            <span className="text-4xl">◎</span>
           </div>
-          <h2 className="font-serif text-2xl text-[#3D5A54]">{r.title}</h2>
-          <p className="font-sans font-normal text-sm text-[#3E5C52] leading-relaxed">{r.body}</p>
-          <a href="/dashboard" className="btn-primary px-8 py-3">
+          <h2 className="font-serif text-3xl text-[#3D5A54]">{r.title}</h2>
+          <p className="font-sans font-normal text-lg text-[#3E5C52] leading-relaxed">{r.body}</p>
+          <a href="/dashboard" className="btn-primary text-base px-8 py-3">
             Back to dashboard
           </a>
         </div>
@@ -255,17 +277,17 @@ export default function AssessmentPage() {
       style={{ background: BG_TINTS[step] }}
     >
       {/* Progress bar */}
-      <div className="w-full h-1 bg-[#E8F2EE] fixed top-0 left-0 right-0 z-10">
+      <div className="w-full h-1.5 bg-[#E8F2EE] fixed top-0 left-0 right-0 z-10">
         <div
           className="h-full bg-[#7BA89A] transition-all duration-500 ease-out"
           style={{ width: `${progressPct}%` }}
         />
       </div>
 
-      <div className="flex-1 flex flex-col items-center justify-center px-4 py-16 max-w-xl mx-auto w-full">
+      <div className="flex-1 flex flex-col items-center justify-center px-6 md:px-8 py-12 max-w-2xl mx-auto w-full">
 
         {/* Section label */}
-        <p className="font-sans text-xs font-medium tracking-widest uppercase text-[#7BA89A] mb-8 animate-fade-in">
+        <p className="font-sans text-sm font-medium tracking-widest uppercase text-[#7BA89A] mb-6 animate-fade-in">
           {step === "phq9" ? "Mood & energy" : step === "gad7" ? "Anxiety & worry" : step === "behavioral" ? "Sleep & daily life" : "Review your answers"}
         </p>
 
@@ -275,14 +297,14 @@ export default function AssessmentPage() {
             {/* Q9 warning */}
             {isQ9 && (
               <div className="rounded-xl bg-[#FEF4E0] border border-[#E8D4B0] px-5 py-4">
-                <p className="font-sans text-sm text-[#A0700A] leading-relaxed">{PHQ9_Q9_WARNING}</p>
+                <p className="font-sans text-base text-[#A0700A] leading-relaxed">{PHQ9_Q9_WARNING}</p>
               </div>
             )}
 
-            <h2 className="font-serif text-[clamp(1.4rem,3vw,1.9rem)] text-[#3D5A54] leading-snug">
+            <h2 className="font-serif text-2xl md:text-3xl text-[#3D5A54] leading-snug">
               Over the last two weeks, how often have you been bothered by…
               <br />
-              <span className="text-[#3D5A54]/80">{currentQuestions[questionIndex]}</span>
+              <span className="text-[#3D5A54]/90">{currentQuestions[questionIndex]}</span>
             </h2>
 
             <div className="flex flex-col gap-3">
@@ -297,7 +319,7 @@ export default function AssessmentPage() {
               ))}
             </div>
 
-            <p className="font-sans text-xs text-[#3D5A54]/30 text-center">
+            <p className="font-sans text-base text-[#3D5A54]/50 text-center">
               Question {questionIndex + 1} of {totalQuestions}
             </p>
           </div>
@@ -306,14 +328,14 @@ export default function AssessmentPage() {
         {/* Behavioral */}
         {step === "behavioral" && (
           <div key="behavioral" className="w-full animate-slide-up flex flex-col gap-10">
-            <h2 className="font-serif text-[clamp(1.4rem,3vw,1.9rem)] text-[#3D5A54]">
+            <h2 className="font-serif text-2xl md:text-3xl text-[#3D5A54]">
               A few more things about your daily life.
             </h2>
 
             <div className="flex flex-col gap-8">
               {/* Sleep */}
               <div className="flex flex-col gap-3">
-                <p className="font-sans font-medium text-sm text-[#3D5A54]">How has your sleep been lately?</p>
+                <p className="font-sans font-medium text-base text-[#3D5A54]">How has your sleep been lately?</p>
                 <ScoreSlider
                   value={data.sleep}
                   onChange={(v) => setData((d) => ({ ...d, sleep: v as SleepScore }))}

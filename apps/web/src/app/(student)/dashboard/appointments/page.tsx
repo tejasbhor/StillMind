@@ -40,7 +40,7 @@ export default function AppointmentsPage() {
   const [showDecline, setShowDecline]       = useState(false);
   const [showReschedule, setShowReschedule] = useState(false);
   const [loading, setLoading]               = useState(false);
-  const [status, setStatus]                 = useState(apt.status);
+  const [status, setStatus]                 = useState<keyof typeof STATUS_CHIP>(apt.status);
 
   const handleConfirm = async () => {
     setLoading(true);

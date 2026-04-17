@@ -1,8 +1,31 @@
 "use client";
 
+import { useState, useEffect } from "react";
 import Card from "@/components/ui/Card";
+import { adminApi, type AdminStudent } from "@/lib/api";
 
 export default function AdminStudentsPage() {
+  const [students, setStudents] = useState<AdminStudent[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const fetchStudents = async () => {
+      try {
+        const res = await adminApi.getStudents(100, 0);
+        setStudents(res.data || []);
+      } catch (err) {
+        console.error("Failed to fetch students", err);
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchStudents();
+  }, []);
+
+  if (loading) {
+    return <div className="p-8 text-center font-serif text-[#3D5A54]">Loading students...</div>;
+  }
+
   return (
     <div className="flex flex-col gap-6">
       <div className="animate-fade-up">
@@ -17,7 +40,7 @@ export default function AdminStudentsPage() {
           <div className="flex items-center justify-between mb-4">
             <h2 className="font-serif text-lg text-[#3D5A54]">Student Directory</h2>
             <div className="px-3 py-1 bg-[#E8F2EE] text-[#3D5A54] rounded-full text-xs font-sans">
-              1,204 Enrolled
+              {students.length} Enrolled
             </div>
           </div>
           
@@ -26,27 +49,26 @@ export default function AdminStudentsPage() {
               <thead>
                 <tr className="border-b border-[#E8F2EE]">
                   <th className="px-4 py-3 text-xs font-semibold text-[#3D5A54]/70">ID</th>
+                  <th className="px-4 py-3 text-xs font-semibold text-[#3D5A54]/70">Name</th>
                   <th className="px-4 py-3 text-xs font-semibold text-[#3D5A54]/70">Status</th>
-                  <th className="px-4 py-3 text-xs font-semibold text-[#3D5A54]/70">Last Check-in</th>
+                  <th className="px-4 py-3 text-xs font-semibold text-[#3D5A54]/70">Last Activity</th>
                   <th className="px-4 py-3 text-xs font-semibold text-[#3D5A54]/70">Assigned To</th>
                 </tr>
               </thead>
               <tbody>
-                {[
-                  { id: "STU-001", status: "Active", date: "Today", counselor: "Dr. P. Menon" },
-                  { id: "STU-002", status: "Inactive", date: "14 days ago", counselor: "Unassigned" },
-                  { id: "STU-003", status: "Active", date: "Yesterday", counselor: "Dr. A. Sharma" },
-                  { id: "STU-004", status: "Active", date: "Today", counselor: "Dr. P. Menon" },
-                ].map((s, i) => (
-                  <tr key={i} className="border-b border-[#E8F2EE] last:border-0 hover:bg-[#FAFCFA]">
-                    <td className="px-4 py-3 text-sm font-medium text-[#3D5A54]">{s.id}</td>
+                {students.map((s) => (
+                  <tr key={s.student_id} className="border-b border-[#E8F2EE] last:border-0 hover:bg-[#FAFCFA]">
+                    <td className="px-4 py-3 text-sm font-medium text-[#3D5A54]">{s.college_id || s.student_id.slice(0, 8)}</td>
+                    <td className="px-4 py-3 text-sm text-[#3D5A54]">{s.full_name}</td>
                     <td className="px-4 py-3">
-                      <span className={`text-xs px-2 py-1 rounded-full ${s.status === 'Active' ? 'bg-[#E8F2EE] text-[#3D5A54]' : 'bg-[#FAFAFA] text-[#3D5A54]/40'}`}>
-                        {s.status}
+                      <span className={`text-xs px-2 py-1 rounded-full ${s.profile_status === 'ACTIVE' ? 'bg-[#E8F2EE] text-[#3D5A54]' : 'bg-[#FAFAFA] text-[#3D5A54]/40'}`}>
+                        {s.profile_status || 'Active'}
                       </span>
                     </td>
-                    <td className="px-4 py-3 text-sm text-[#3D5A54]/70">{s.date}</td>
-                    <td className="px-4 py-3 text-sm text-[#3D5A54]/70">{s.counselor}</td>
+                    <td className="px-4 py-3 text-sm text-[#3D5A54]/70">
+                      {s.last_activity ? new Date(s.last_activity).toLocaleDateString() : 'N/A'}
+                    </td>
+                    <td className="px-4 py-3 text-sm text-[#3D5A54]/70">{s.assigned_counselor || 'Unassigned'}</td>
                   </tr>
                 ))}
               </tbody>

@@ -36,7 +36,7 @@ export default function CounselorLayout({ children }: { children: React.ReactNod
           {/* Logo + today count */}
           <div className="px-6 py-6 border-b border-[#E8F2EE]">
             <div className="flex items-center gap-2 mb-4">
-              <img src="/logo.png" alt="StillMind Logo" className="h-[48px] w-auto mix-blend-multiply flex-shrink-0" />
+              <img src="/logo.png" alt="StillMind Logo" className="h-[60px] w-auto mix-blend-multiply flex-shrink-0" />
             </div>
             <div className="rounded-xl bg-[#E8F2EE] border border-[#B8D4C0] px-4 py-3">
               <p className="font-sans text-xs text-[#3D5A54]/60">Today's sessions</p>

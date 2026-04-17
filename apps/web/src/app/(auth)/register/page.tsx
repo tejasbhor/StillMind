@@ -8,11 +8,14 @@ import { z } from "zod";
 import Button from "@/components/ui/Button";
 import Input from "@/components/ui/Input";
 import { cn } from "@/lib/cn";
+import { api } from "@/lib/api";
+
+const API_BASE = process.env.NEXT_PUBLIC_API_URL ?? "/api/v1";
 
 // ── Zod schemas per step ───────────────────────────────────────────────────────
 const step1Schema = z.object({
-  email:           z.string().email("Valid email required"),
-  password:        z.string().min(8, "At least 8 characters"),
+  email:           z.string().email("Please enter a valid email address"),
+  password:        z.string().min(8, "Password must be at least 8 characters").max(128, "Password too long"),
   confirmPassword: z.string(),
 }).refine((d) => d.password === d.confirmPassword, {
   message: "Passwords do not match",
@@ -20,8 +23,8 @@ const step1Schema = z.object({
 });
 
 const step2Schema = z.object({
-  full_name:  z.string().min(2, "Full name required"),
-  college_id: z.string().min(2, "College ID required"),
+  full_name:  z.string().min(2, "Full name is required").max(100, "Name too long"),
+  college_id: z.string().min(2, "College ID is required").max(50, "College ID too long"),
   phone:      z.string().optional(),
 });
 
@@ -39,6 +42,7 @@ const STEP_LABELS = ["Account", "Profile", "Consent"];
 export default function RegisterPage() {
   const [step, setStep]         = useState(1);
   const [loading, setLoading]   = useState(false);
+  const [error, setError]       = useState<string | null>(null);
   const [consents, setConsents] = useState<Record<string, boolean>>({});
   const [formData, setFormData] = useState<Partial<Step1Data & Step2Data>>({});
 
@@ -56,15 +60,40 @@ export default function RegisterPage() {
     setFormData((prev) => ({ ...prev, ...data }));
     setStep(2);
   };
+  
   const onStep2 = (data: Step2Data) => {
     setFormData((prev) => ({ ...prev, ...data }));
     setStep(3);
   };
+  
   const onSubmit = async () => {
     setLoading(true);
+    setError(null);
+    
     try {
-      await new Promise((r) => setTimeout(r, 1400));
+      // Register the student with backend
+      const response = await fetch(`${API_BASE}/auth/register/student`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          email: formData.email,
+          password: formData.password,
+          full_name: formData.full_name,
+          college_id: formData.college_id,
+          phone: formData.phone,
+        }),
+      });
+      
+      const json = await response.json();
+      
+      if (!response.ok) {
+        throw new Error(json?.detail || json?.error?.message || "Registration failed");
+      }
+      
+      // Success - redirect to assessment
       window.location.href = "/dashboard/assessment";
+    } catch (e: any) {
+      setError(e.message || "Registration failed. Please try again.");
     } finally {
       setLoading(false);
     }
@@ -79,6 +108,13 @@ export default function RegisterPage() {
           Step {step} of 3 — {STEP_LABELS[step - 1]}
         </p>
       </div>
+
+      {/* Error display */}
+      {error && (
+        <div className="rounded-xl bg-[#FDEAEA] border border-[#F5B8B8] px-4 py-3">
+          <p className="font-sans text-sm text-[#B03030]">{error}</p>
+        </div>
+      )}
 
       {/* Step progress */}
       <div className="flex items-center gap-2">
@@ -213,7 +249,7 @@ export default function RegisterPage() {
                 key={consent.id}
                 htmlFor={`consent-${consent.id}`}
                 className={cn(
-                  "flex gap-3 rounded-xl border p-4 cursor-none transition-all duration-200",
+                  "flex gap-3 rounded-xl border p-4 cursor-pointer transition-all duration-200",
                   consents[consent.id]
                     ? "border-[#7BA89A] bg-[#E8F2EE]"
                     : "border-[#E8F2EE] bg-white hover:border-[#B8D4C0]"

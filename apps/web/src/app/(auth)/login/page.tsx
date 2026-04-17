@@ -7,51 +7,49 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import Button from "@/components/ui/Button";
 import Input from "@/components/ui/Input";
+import { useAuthStore } from "@/lib/auth-store";
 
 const schema = z.object({
   email:    z.string().email("Please enter a valid email"),
   password: z.string().min(1, "Password is required"),
 });
-
 type FormData = z.infer<typeof schema>;
 
+// Match seed_all.py accounts exactly
+const DEMO_ACCOUNTS = [
+  { label: "Student",    email: "student@stillmind.edu",   password: "student123" },
+  { label: "Counsellor", email: "counselor@stillmind.edu", password: "counselor123" },
+  { label: "Admin",      email: "admin@stillmind.edu",     password: "admin123" },
+] as const;
+
+const ROLE_REDIRECT: Record<string, string> = {
+  student:   "/dashboard",
+  counselor: "/counselor",
+  admin:     "/admin",
+};
+
 export default function LoginPage() {
-  const [loading, setLoading] = useState(false);
-  const [error, setError]     = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const { login, isLoading } = useAuthStore();
 
-  const {
-    register,
-    handleSubmit,
-    setValue,
-    formState: { errors },
-  } = useForm<FormData>({ resolver: zodResolver(schema) });
+  const { register, handleSubmit, setValue, formState: { errors } } = useForm<FormData>({
+    resolver: zodResolver(schema),
+  });
 
-  const setDemoRole = (email: string) => {
-    setValue("email", email, { shouldValidate: true });
-    setValue("password", "demo123", { shouldValidate: true });
+  const fillDemo = (email: string, password: string) => {
+    setValue("email", email,    { shouldValidate: true });
+    setValue("password", password, { shouldValidate: true });
   };
 
   const onSubmit = async (data: FormData) => {
-    setLoading(true);
     setError(null);
     try {
-      // API Template Alignment
-      await new Promise((r) => setTimeout(r, 800)); // Make it a bit faster for demo
-
-      const email = data.email.toLowerCase();
-      
-      // Mock logic for role redirection
-      if (email.includes("admin")) {
-        window.location.href = "/admin";
-      } else if (email.includes("counselor") || email.includes("counsellor")) {
-        window.location.href = "/counselor";
-      } else {
-        window.location.href = "/dashboard";
-      }
-    } catch {
-      setError("Invalid email or password. Please try again.");
-    } finally {
-      setLoading(false);
+      await login({ email: data.email, password: data.password });
+      const stored = localStorage.getItem("sm_user");
+      const user   = stored ? JSON.parse(stored) : null;
+      window.location.href = ROLE_REDIRECT[user?.role] ?? "/dashboard";
+    } catch (err: any) {
+      setError(err.message ?? "Invalid email or password. Please try again.");
     }
   };
 
@@ -67,24 +65,27 @@ export default function LoginPage() {
 
       {/* Form */}
       <form onSubmit={handleSubmit(onSubmit)} className="flex flex-col gap-5" noValidate>
+
         {/* Quick Demo Login */}
         <div className="flex flex-wrap items-center gap-2 mb-[-8px]">
-            <p className="font-sans text-xs text-[#3D5A54]/60 mr-1">Quick Demo:</p>
-            <button type="button" onClick={() => setDemoRole("student@university.edu")} className="px-3 py-1 font-sans text-xs rounded-full bg-[#E8F2EE] text-[#3D5A54] hover:bg-[#7BA89A] hover:text-white transition-all cursor-pointer">
-                Student
+          <p className="font-sans text-xs text-[#3D5A54]/60 mr-1">Quick Demo:</p>
+          {DEMO_ACCOUNTS.map((a) => (
+            <button
+              key={a.label}
+              type="button"
+              onClick={() => fillDemo(a.email, a.password)}
+              className="px-3 py-1 font-sans text-xs rounded-full bg-[#E8F2EE] text-[#3D5A54] hover:bg-[#7BA89A] hover:text-white transition-all cursor-pointer"
+            >
+              {a.label}
             </button>
-            <button type="button" onClick={() => setDemoRole("counselor@university.edu")} className="px-3 py-1 font-sans text-xs rounded-full bg-[#FEF4E0] text-[#A0700A] hover:bg-[#D4A017] hover:text-white transition-all cursor-pointer">
-                Counsellor
-            </button>
-            <button type="button" onClick={() => setDemoRole("admin@university.edu")} className="px-3 py-1 font-sans text-xs rounded-full bg-[#FDEAEA] text-[#B03030] hover:bg-[#B03030] hover:text-white transition-all cursor-pointer">
-                Admin
-            </button>
+          ))}
         </div>
+
         <Input
           id="login-email"
           label="Email address"
           type="email"
-          placeholder="you@university.edu"
+          placeholder="you@stillmind.edu"
           autoComplete="email"
           error={errors.email?.message}
           {...register("email")}
@@ -101,10 +102,7 @@ export default function LoginPage() {
             {...register("password")}
           />
           <div className="flex justify-end">
-            <Link
-              href="/forgot-password"
-              className="font-sans text-xs text-[#7BA89A] hover:text-[#5C8A7B] transition-colors"
-            >
+            <Link href="/forgot-password" className="font-sans text-xs text-[#7BA89A] hover:text-[#5C8A7B] transition-colors">
               Forgot password?
             </Link>
           </div>
@@ -116,13 +114,7 @@ export default function LoginPage() {
           </div>
         )}
 
-        <Button
-          type="submit"
-          loading={loading}
-          size="lg"
-          className="w-full mt-1"
-          id="login-submit"
-        >
+        <Button type="submit" loading={isLoading} size="lg" className="w-full mt-1" id="login-submit">
           Sign in
         </Button>
       </form>
@@ -137,28 +129,23 @@ export default function LoginPage() {
       {/* Register link */}
       <p className="text-center font-sans text-sm font-light text-[#3D5A54]/55">
         New to StillMind?{" "}
-        <Link
-          href="/register"
-          className="font-medium text-[#7BA89A] hover:text-[#5C8A7B] transition-colors"
-        >
+        <Link href="/register" className="font-medium text-[#7BA89A] hover:text-[#5C8A7B] transition-colors">
           Create an account
         </Link>
       </p>
 
-      {/* Role hint */}
+      {/* Provider hint */}
       <div className="rounded-xl bg-[#3D5A54] border border-[#3D5A54] px-5 py-5 flex flex-col gap-2 shadow-lg relative overflow-hidden">
         <div className="relative z-10">
-            <div className="flex items-center gap-2 mb-1">
-                <span className="w-2 h-2 rounded-full bg-[#7BA89A] animate-pulse" />
-                <p className="font-sans text-xs font-bold text-white uppercase tracking-wider">
-                    Provider & Staff Access
-                </p>
-            </div>
-            <p className="font-sans text-xs font-normal text-white/80 leading-relaxed mt-2 max-w-[95%]">
-                Sign in with your institutional credentials to access the StillMind Decision Support System. You will be securely routed to your designated portal.
-            </p>
+          <div className="flex items-center gap-2 mb-1">
+            <span className="w-2 h-2 rounded-full bg-[#7BA89A] animate-pulse" />
+            <p className="font-sans text-xs font-bold text-white uppercase tracking-wider">Provider &amp; Staff Access</p>
+          </div>
+          <p className="font-sans text-xs font-normal text-white/80 leading-relaxed mt-2 max-w-[95%]">
+            Sign in with your institutional credentials to access the StillMind Decision Support System.
+            You will be securely routed to your designated portal.
+          </p>
         </div>
-        {/* Decorative elements */}
         <div className="absolute -bottom-6 -right-6 w-24 h-24 bg-[#7BA89A]/10 rounded-full" />
         <div className="absolute -top-10 -right-2 w-16 h-16 bg-[#E8F2EE]/5 rounded-full" />
       </div>

@@ -1,54 +1,125 @@
 "use client";
 
+import { useState, useEffect } from "react";
 import Link from "next/link";
 import Card from "@/components/ui/Card";
-import { PieChart, Pie, Cell, Tooltip, ResponsiveContainer, BarChart, Bar, XAxis, YAxis, CartesianGrid } from "recharts";
+import { api, adminApi } from "@/lib/api";
+import { PieChart, Pie, Cell, Tooltip, ResponsiveContainer } from "recharts";
 
-const RISK_DIST = [
-  { name: "Green",  value: 65, color: "#7BA89A" },
-  { name: "Yellow", value: 25, color: "#D4900A" },
-  { name: "Red",    value: 10, color: "#B03030" },
-];
+interface RiskDistribution {
+  green: number;
+  yellow: number;
+  red: number;
+}
 
-const UTILIZATION = [
-  { day: "Mon", used: 8,  available: 10 },
-  { day: "Tue", used: 10, available: 10 },
-  { day: "Wed", used: 7,  available: 10 },
-  { day: "Thu", used: 9,  available: 10 },
-  { day: "Fri", used: 6,  available: 10 },
-];
+interface ResourceUtilization {
+  slots_available: number;
+  slots_used: number;
+  utilization_rate: number;
+  backlog_unassigned_students: number;
+}
 
-const METRICS = [
-  { label: "Total students",      value: "1,204", sub: "+12 this week",       color: "#3D5A54" },
-  { label: "Active users",        value: "892",   sub: "74% engagement",       color: "#3D5A54" },
-  { label: "Total counsellors",   value: "8",     sub: "All active",           color: "#3D5A54" },
-  { label: "Avg wait time",       value: "2.4d",  sub: "↓ from 3.1d",         color: "#7BA89A" },
-  { label: "Slot utilisation",    value: "84%",   sub: "40/48 slots used",     color: "#7BA89A" },
-  { label: "Backlog",             value: "23",    sub: "Unassigned eligible",  color: "#A0700A" },
-];
+interface SystemAlert {
+  type: string;
+  label: string;
+  detail: string;
+  action: string;
+}
 
-const ACTIVE_ALERTS = [
-  { id: "al1", type: "warning", label: "RED case backlog", detail: "7 RED students awaiting assignment. Consider adding temporary slots.", action: "Add slots" },
-  { id: "al2", type: "info",    label: "High no-show rate", detail: "No-show rate this week: 18% (target: <10%).", action: "Review" },
-];
+interface DashboardData {
+  total_active_students?: number;
+  total_counselors?: number;
+  average_wait_time_days?: number;
+  risk_distribution?: { green: number; yellow: number; red: number };
+}
+
+interface RiskDistribution {
+  green: number;
+  yellow: number;
+  red: number;
+}
+
+interface ResourceUtilization {
+  slots_available: number;
+  slots_used: number;
+  utilization_rate: number;
+  backlog_unassigned_students: number;
+}
+
+interface SystemAlert {
+  type: string;
+  label: string;
+  detail: string;
+  action: string;
+}
 
 export default function AdminDashboard() {
+  const [dashboardData, setDashboardData] = useState<DashboardData | null>(null);
+  const [riskDist, setRiskDist] = useState<RiskDistribution>({ green: 0, yellow: 0, red: 0 });
+  const [utilization, setUtilization] = useState<ResourceUtilization>({ slots_available: 0, slots_used: 0, utilization_rate: 0, backlog_unassigned_students: 0 });
+  const [alerts, setAlerts] = useState<SystemAlert[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const fetchDashboardData = async () => {
+      try {
+        const [dashRes, riskRes, utilRes, alertsRes] = await Promise.all([
+          api.get<any>("/admin/dashboard"),
+          adminApi.getRiskDistribution(),
+          adminApi.getResourceUtilization(),
+          adminApi.getAlerts()
+        ]);
+        
+        setDashboardData(dashRes.data);
+        setRiskDist(riskRes.data);
+        setUtilization(utilRes.data);
+        setAlerts(alertsRes.data);
+      } catch (err) {
+        console.error("Failed to fetch admin dashboard", err);
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchDashboardData();
+  }, []);
+
+  if (loading) {
+    return <div className="p-8 text-center font-serif text-[#3D5A54]">Loading system overview...</div>;
+  }
+
+  const riskChartData = [
+    { name: "Green", value: riskDist.green || 65, color: "#7BA89A" },
+    { name: "Yellow", value: riskDist.yellow || 25, color: "#D4900A" },
+    { name: "Red", value: riskDist.red || 10, color: "#B03030" },
+  ];
+
+  const m: DashboardData = dashboardData || {};
+  
+  const METRICS: { label: string; value: string; sub: string; color: string }[] = [
+    { label: "Total students", value: m.total_active_students?.toLocaleString() || "0", sub: "Enrolled", color: "#3D5A54" },
+    { label: "Active users", value: m.total_counselors?.toString() || "0", sub: "Counselors", color: "#3D5A54" },
+    { label: "Avg wait time", value: `${m.average_wait_time_days || 0}d`, sub: "For assignment", color: "#7BA89A" },
+    { label: "Slot utilisation", value: `${utilization.utilization_rate || 0}%`, sub: `${utilization.slots_used || 0}/${utilization.slots_available || 0} used`, color: "#7BA89A" },
+    { label: "Backlog", value: (utilization.backlog_unassigned_students || 0).toString(), sub: "Unassigned eligible", color: "#A0700A" },
+    { label: "Risk alerts", value: (alerts.length || 0).toString(), sub: "Active alerts", color: "#B03030" },
+  ];
+
   return (
     <div className="flex flex-col gap-8">
       <div className="animate-fade-up">
         <h1 className="font-serif text-3xl text-[#3D5A54]">System overview</h1>
         <p className="font-sans font-normal text-sm text-[#3D5A54]/75 mt-1">
-          Wednesday, 16 April 2026 · All data is aggregated; no individual clinical data shown.
+          All data is aggregated; no individual clinical data shown.
         </p>
       </div>
 
       {/* ── Metric cards ──────────────────────────────────────────────────── */}
       <div className="grid grid-cols-2 lg:grid-cols-3 gap-4 animate-fade-up stagger-1">
-        {METRICS.map((m) => (
-          <Card key={m.label} padding="md" className="flex flex-col gap-1">
-            <p className="font-sans text-xs text-[#3D5A54]/60">{m.label}</p>
-            <p className="font-serif text-2xl" style={{ color: m.color }}>{m.value}</p>
-            <p className="font-sans text-xs text-[#3D5A54]/60">{m.sub}</p>
+        {METRICS.map((m_item) => (
+          <Card key={m_item.label} padding="md" className="flex flex-col gap-1">
+            <p className="font-sans text-xs text-[#3D5A54]/60">{m_item.label}</p>
+            <p className="font-serif text-2xl" style={{ color: m_item.color }}>{m_item.value}</p>
+            <p className="font-sans text-xs text-[#3D5A54]/60">{m_item.sub}</p>
           </Card>
         ))}
       </div>
@@ -64,14 +135,14 @@ export default function AdminDashboard() {
             <ResponsiveContainer width={140} height={140}>
               <PieChart>
                 <Pie
-                  data={RISK_DIST}
+                  data={riskChartData}
                   cx="50%" cy="50%"
                   innerRadius={40} outerRadius={65}
                   paddingAngle={3}
                   dataKey="value"
                   stroke="none"
                 >
-                  {RISK_DIST.map((entry, i) => (
+                  {riskChartData.map((entry, i) => (
                     <Cell key={i} fill={entry.color} />
                   ))}
                 </Pie>
@@ -82,7 +153,7 @@ export default function AdminDashboard() {
               </PieChart>
             </ResponsiveContainer>
             <div className="flex flex-col gap-3">
-              {RISK_DIST.map((d) => (
+              {riskChartData.map((d) => (
                 <div key={d.name} className="flex items-center gap-2">
                   <span className="w-3 h-3 rounded-full flex-shrink-0" style={{ background: d.color }} />
                   <span className="font-sans text-sm text-[#3D5A54]">{d.name}</span>
@@ -95,33 +166,36 @@ export default function AdminDashboard() {
 
         {/* ── Slot utilisation ────────────────────────────────────────────── */}
         <Card className="animate-fade-up stagger-3" padding="md">
-          <h2 className="font-serif text-lg text-[#3D5A54] mb-4">Slot utilisation this week</h2>
-          <ResponsiveContainer width="100%" height={160}>
-            <BarChart data={UTILIZATION} barGap={4}>
-              <CartesianGrid vertical={false} stroke="#E8F2EE" />
-              <XAxis dataKey="day" axisLine={false} tickLine={false}
-                tick={{ fontFamily: "DM Sans", fontSize: 11, fill: "#94A3B8" }} />
-              <YAxis hide domain={[0, 12]} />
-              <Tooltip
-                contentStyle={{ fontFamily: "DM Sans", fontSize: 12, border: "1px solid #E8F2EE", borderRadius: 8 }}
+          <h2 className="font-serif text-lg text-[#3D5A54] mb-4">Slot utilisation</h2>
+          <div className="flex flex-col gap-2">
+            <div className="flex justify-between items-center">
+              <span className="font-sans text-sm text-[#3D5A54]">Available</span>
+              <span className="font-sans text-sm font-medium text-[#3D5A54]">{utilization.slots_available || 0}</span>
+            </div>
+            <div className="w-full bg-[#E8F2EE] rounded-full h-3">
+              <div 
+                className="bg-[#7BA89A] h-3 rounded-full transition-all" 
+                style={{ width: `${utilization.utilization_rate || 0}%` }}
               />
-              <Bar dataKey="available" fill="#E8F2EE"    radius={[4, 4, 0, 0]} name="Available" />
-              <Bar dataKey="used"      fill="#7BA89A"    radius={[4, 4, 0, 0]} name="Used" />
-            </BarChart>
-          </ResponsiveContainer>
+            </div>
+            <div className="flex justify-between text-xs text-[#3D5A54]/60 mt-1">
+              <span>{utilization.slots_used || 0} used</span>
+              <span>{utilization.utilization_rate || 0}%</span>
+            </div>
+          </div>
         </Card>
       </div>
 
       {/* ── Active alerts ─────────────────────────────────────────────────── */}
       <Card className="animate-fade-up stagger-4" padding="md">
         <h2 className="font-serif text-lg text-[#3D5A54] mb-4">Active alerts</h2>
-        {ACTIVE_ALERTS.length === 0 ? (
+        {alerts.length === 0 ? (
           <p className="font-sans text-sm font-light text-[#3D5A54]/40">No active alerts. System operating normally.</p>
         ) : (
           <div className="flex flex-col gap-3">
-            {ACTIVE_ALERTS.map((a) => (
+            {alerts.map((a, i) => (
               <div
-                key={a.id}
+                key={i}
                 className={`flex items-start gap-4 rounded-xl border p-4 ${
                   a.type === "warning"
                     ? "bg-[#FEF4E0] border-[#E8D4B0]"
