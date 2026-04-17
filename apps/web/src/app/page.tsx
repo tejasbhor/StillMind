@@ -212,15 +212,15 @@ export default function LandingPage() {
 
       {/* ── Navigation ──────────────────────────────────────────── */}
       <motion.header
-        className="fixed top-0 left-0 right-0 z-[100] px-6 py-5"
+        className="fixed top-0 left-0 right-0 z-[100] px-6 py-4"
         initial={{ y: -80, opacity: 0 }}
         animate={{ y: 0, opacity: 1 }}
         transition={{ duration: 0.7, ease: [0.22, 1, 0.36, 1] }}
       >
-        <div className={`max-w-6xl mx-auto flex items-center justify-between py-3 px-8 rounded-full transition-all duration-300 ${
+        <div className={`max-w-7xl mx-auto flex items-center justify-between py-3 px-6 rounded-full transition-all duration-300 ${
           navScrolled
-            ? "bg-white shadow-card border border-teal/[0.08]"
-            : "bg-transparent"
+            ? "bg-white/95 shadow-card border border-teal/[0.08] backdrop-blur-md"
+            : "bg-white/70 border border-white/30 backdrop-blur-xl shadow-sm"
         }`}>
           <Link href="/" className="flex items-center gap-3 group/logo">
             <motion.div
@@ -235,8 +235,9 @@ export default function LandingPage() {
 
           <nav className="hidden lg:flex items-center gap-12">
             {[
-              { label: "The Experience", href: "#experience" },
-              { label: "Our Story", href: "#principles" },
+              { label: "Product", href: "#experience" },
+              { label: "How It Works", href: "#product-story" },
+              { label: "For Campuses", href: "#outcomes" },
               { label: "Impact", href: "#stats" },
             ].map((item) => (
               <a
@@ -258,10 +259,10 @@ export default function LandingPage() {
             </Link>
             <MagneticButton>
               <Link
-                href="/register"
+                href="/contact"
                 className="btn-primary !py-2.5 !px-7 !text-[11px] font-black uppercase tracking-widest shadow-md hover:shadow-float transition-all"
               >
-                Get Started
+                Book a Demo
               </Link>
             </MagneticButton>
           </div>
@@ -279,6 +280,7 @@ export default function LandingPage() {
           >
             {/* Left: Copy */}
             <div className="flex flex-col gap-9">
+              {/* Announcement bar */}
               <motion.div
                 variants={fadeUp}
                 initial="hidden"
@@ -288,7 +290,7 @@ export default function LandingPage() {
               >
                 <span className="flex h-2 w-2 rounded-full bg-sage animate-pulse" />
                 <span className="text-[10px] font-black uppercase tracking-[0.2em] text-teal/70">
-                  Now live for 2026 intake
+                  Now open for 2026 campus partnerships
                 </span>
               </motion.div>
 
@@ -301,24 +303,21 @@ export default function LandingPage() {
                     animate="visible"
                     custom={1}
                   >
-                    Your campus <br />
-                    has a{" "}
+                    Campus mental health,{" "}
                     <motion.span
                       className="italic text-sage font-medium relative inline-block"
                       initial={{ opacity: 0, y: 20 }}
                       animate={{ opacity: 1, y: 0 }}
                       transition={{ delay: 0.5, duration: 0.8, ease: [0.22, 1, 0.36, 1] }}
                     >
-                      quiet
+                      reimagined
                       <motion.span
                         className="absolute -bottom-1 left-0 h-[2px] bg-sage/50 rounded-full"
                         initial={{ width: 0 }}
                         animate={{ width: "100%" }}
                         transition={{ delay: 1.1, duration: 0.6, ease: [0.22, 1, 0.36, 1] }}
                       />
-                    </motion.span>{" "}
-                    <br />
-                    corner.
+                    </motion.span>
                   </motion.h1>
                 </div>
                 <motion.div
@@ -336,9 +335,9 @@ export default function LandingPage() {
                 animate="visible"
                 custom={3}
               >
-                No student should face a waitlist in their darkest hour.
-                StillMind connects you with immediate care — skipping the queue
-                to find peace in minutes.
+                The faster path from reaching out to real support. StillMind helps campuses 
+                respond earlier, guide students with clarity, and connect the right people 
+                to care without the confusion of long waitlists.
               </motion.p>
 
               <motion.div
@@ -348,12 +347,14 @@ export default function LandingPage() {
                 animate="visible"
                 custom={4}
               >
-                <Link
-                  href="/register"
-                  className="btn-primary !py-4 !px-10 !text-[11px] font-black uppercase tracking-[0.2em] shadow-md"
-                >
-                  Begin your check-in
-                </Link>
+                <MagneticButton>
+                  <Link
+                    href="/contact"
+                    className="btn-primary !py-4 !px-10 !text-[11px] font-black uppercase tracking-[0.2em] shadow-md"
+                  >
+                    Book a Demo
+                  </Link>
+                </MagneticButton>
                 <Link
                   href="#experience"
                   className="inline-flex items-center gap-3 group"
@@ -362,12 +363,12 @@ export default function LandingPage() {
                     <span className="ml-0.5 text-xs">&#9654;</span>
                   </div>
                   <span className="font-sans text-[11px] font-black uppercase tracking-[0.2em] text-teal/50 group-hover:text-teal transition-colors">
-                    See how it works
+                    See the Experience
                   </span>
                 </Link>
               </motion.div>
 
-              {/* Micro trust signals */}
+              {/* Trust microcopy */}
               <motion.div
                 className="flex items-center gap-6 pt-2"
                 variants={fadeUp}
@@ -375,7 +376,7 @@ export default function LandingPage() {
                 animate="visible"
                 custom={5}
               >
-                {["HIPAA", "ISO 27001", "End-to-End Encrypted"].map((label) => (
+                {["Privacy-first by design", "Human-centered support", "Built for students, counselors, and institutions"].map((label) => (
                   <div key={label} className="flex items-center gap-1.5">
                     <div className="w-1.5 h-1.5 rounded-full bg-sage/60" />
                     <span className="font-sans text-[9px] font-black uppercase tracking-widest text-teal/40">
@@ -481,30 +482,40 @@ export default function LandingPage() {
                   The Experience
                 </motion.span>
                 <motion.h2
-                  className="font-serif text-4xl md:text-5xl lg:text-6xl leading-[1.02] mb-10 text-white tracking-tight"
+                  className="font-serif text-4xl md:text-5xl lg:text-6xl leading-[1.02] mb-6 text-white tracking-tight"
                   variants={fadeUp}
                   initial="hidden"
                   whileInView="visible"
                   viewport={{ once: true }}
                   custom={1}
                 >
-                  Clarity in{" "}
-                  <span className="text-sage italic">every step.</span>
+                  Calm on the surface.{" "}
+                  <span className="text-sage italic">Powerful where it matters.</span>
                 </motion.h2>
+                <motion.p
+                  className="font-sans text-base text-white/50 max-w-md mb-12 leading-relaxed"
+                  variants={fadeUp}
+                  initial="hidden"
+                  whileInView="visible"
+                  viewport={{ once: true }}
+                  custom={1}
+                >
+                  The experience is designed to feel calm for students, useful for counselors, and dependable for institutions.
+                </motion.p>
 
                 <div className="space-y-8">
                   {[
                     {
-                      title: "Immediate Connection",
-                      desc: "No more silent waiting. From the moment you check-in, our secure protocol works to find you the right professional help instantly.",
+                      title: "For Students",
+                      desc: "A private, guided path to support with language that feels reassuring instead of clinical. Students see progress, appointments, and next steps without being overwhelmed.",
                     },
                     {
-                      title: "Understandable Support",
-                      desc: "We translate complex assessment data into clear outcomes, ensuring that both you and your counselor have total clarity.",
+                      title: "For Counselors",
+                      desc: "Clearer prioritization, better session flow, and less administrative drag. The product supports judgment; it does not replace it.",
                     },
                     {
-                      title: "Lasting Progress",
-                      desc: "Experience 1:1 care that evolves. Track your mental wellbeing through high-impact check-ins that guide your healing journey.",
+                      title: "For Institutions",
+                      desc: "Better visibility into demand, capacity, and response quality, with privacy boundaries built into the experience.",
                     },
                   ].map((item, idx) => (
                     <motion.div
@@ -660,8 +671,8 @@ export default function LandingPage() {
           </div>
         </section>
 
-        {/* ── Principles Section ────────────────────────────────── */}
-        <section id="principles" className="snap-section h-screen flex items-center bg-[#FAFAF8] relative overflow-hidden">
+        {/* ── Why StillMind Section ─────────────────────────────── */}
+        <section id="why" className="snap-section h-screen flex items-center bg-[#FAFAF8] relative overflow-hidden">
           <div className="max-w-6xl mx-auto px-8 w-full relative z-10">
             {/* Header — left-aligned, editorial */}
             <div className="grid lg:grid-cols-2 gap-16 items-end mb-20">
@@ -672,11 +683,11 @@ export default function LandingPage() {
                 viewport={{ once: true, margin: "-80px" }}
               >
                 <span className="text-[10px] font-black uppercase tracking-[0.5em] text-teal/40 mb-6 block">
-                  Our Philosophy
+                  Why Campuses Choose StillMind
                 </span>
                 <h2 className="font-serif text-5xl md:text-6xl leading-[1.05] text-teal-dark tracking-tight">
-                  Technology that{" "}
-                  <span className="italic text-sage font-medium">prioritizes you.</span>
+                  Built for trust.{" "}
+                  <span className="italic text-sage font-medium">Designed for care.</span>
                 </h2>
               </motion.div>
               <motion.p
@@ -687,27 +698,32 @@ export default function LandingPage() {
                 viewport={{ once: true, margin: "-80px" }}
                 custom={1}
               >
-                We built StillMind to bridge the gap between human empathy and intelligent scale — ensuring every student is heard, not just processed.
+                StillMind brings together student dignity, counselor effectiveness, and institutional clarity in one privacy-first platform.
               </motion.p>
             </div>
 
-            {/* Three principles — flush editorial grid */}
-            <div className="grid md:grid-cols-3 gap-px bg-teal/[0.07] rounded-2xl overflow-hidden">
+            {/* Four principles — flush editorial grid */}
+            <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-px bg-teal/[0.07] rounded-2xl overflow-hidden">
               {[
                 {
                   n: "01",
-                  t: "Radical Clarity",
-                  d: "No clinical jargon. We translate complex assessments into a language of peace — one you can actually act on.",
+                  t: "Student Dignity First",
+                  d: "The experience is built to reduce uncertainty, not add to it. Clear language, visible progress, and a sense of agency throughout.",
                 },
                 {
                   n: "02",
-                  t: "Fairness First",
-                  d: "Our prioritization logic is ethical, transparent, and built to find those who need help most — not those who ask loudest.",
+                  t: "Human Judgment Stays Central",
+                  d: "Counselors remain the decision-makers in care delivery. StillMind supports their expertise; it never replaces it.",
                 },
                 {
                   n: "03",
-                  t: "Total Privacy",
-                  d: "Role-based encryption ensures your sessions remain between you and your counselor. Always.",
+                  t: "Clear and Fair Prioritization",
+                  d: "Support is directed with consistency and transparency under real-world capacity limits. No black boxes, no arbitrary rules.",
+                },
+                {
+                  n: "04",
+                  t: "Privacy Built Into the Product",
+                  d: "Different users see only what they need. Privacy boundaries are enforced by design, not just policy.",
                 },
               ].map((p, i) => (
                 <motion.div
@@ -744,7 +760,7 @@ export default function LandingPage() {
         </section>
 
         {/* ── Outcomes Section ──────────────────────────────────── */}
-        <section id="social" className="snap-section h-screen flex items-center px-8 bg-white relative overflow-hidden">
+        <section id="outcomes" className="snap-section h-screen flex items-center px-8 bg-white relative overflow-hidden">
           <div className="max-w-6xl mx-auto w-full">
             {/* Header */}
             <motion.div
@@ -755,11 +771,11 @@ export default function LandingPage() {
               viewport={{ once: true, margin: "-80px" }}
             >
               <span className="text-[10px] font-black uppercase tracking-[0.5em] text-teal/40 mb-6 block">
-                Who It Serves
+                One Product. Three Critical Experiences.
               </span>
               <h2 className="font-serif text-5xl md:text-6xl leading-[1.05] tracking-tight text-teal-dark max-w-xl">
-                Outcome-driven for{" "}
-                <span className="text-sage italic font-medium">everyone.</span>
+                Better outcomes for{" "}
+                <span className="text-sage italic font-medium">the people carrying the most.</span>
               </h2>
             </motion.div>
 
@@ -768,26 +784,26 @@ export default function LandingPage() {
               {[
                 {
                   role: "Students",
-                  headline: "Peace on your terms.",
-                  body: "Skip the waiting room. Access therapeutic help precisely when you need it — not months later.",
+                  headline: "Feel guided, not lost.",
+                  body: "Get a clearer path to support when uncertainty feels heaviest. Private, reassuring, and designed to reduce anxiety rather than add to it.",
                   href: "/register",
-                  cta: "Start check-in",
+                  cta: "Start the experience",
                   dark: false,
                 },
                 {
                   role: "Counselors",
-                  headline: "Impact where it matters.",
-                  body: "Focus on healing. Let StillMind handle triage, ranking, and administrative overhead so you can do your best work.",
+                  headline: "Focus on care, not sorting queues.",
+                  body: "Clearer prioritization means less administrative drag and more time for the work that matters. StillMind supports your judgment; it never replaces it.",
                   href: "/register",
-                  cta: "Join as counselor",
+                  cta: "Explore counselor workflow",
                   dark: true,
                 },
                 {
                   role: "Institutions",
-                  headline: "Resource clarity.",
-                  body: "Manage high-volume campus needs with an ethical, transparent protocol for intelligent allocation.",
+                  headline: "Bring structure and confidence.",
+                  body: "Improve response quality, allocate limited capacity more intelligently, and build confidence in campus care delivery with clear operational visibility.",
                   href: "/contact",
-                  cta: "Get in touch",
+                  cta: "Book a campus demo",
                   dark: false,
                 },
               ].map((card, i) => (
@@ -863,8 +879,68 @@ export default function LandingPage() {
           </div>
         </section>
 
+        {/* ── FAQ Section ───────────────────────────────────────── */}
+        <section id="faq" className="snap-section min-h-screen flex items-center px-8 py-20 bg-[#FAFAF8] relative overflow-hidden">
+          <div className="max-w-4xl mx-auto w-full">
+            {/* Header */}
+            <motion.div
+              className="mb-16 text-center"
+              variants={fadeUp}
+              initial="hidden"
+              whileInView="visible"
+              viewport={{ once: true, margin: "-80px" }}
+            >
+              <span className="text-[10px] font-black uppercase tracking-[0.5em] text-teal/40 mb-6 block">
+                Common Questions
+              </span>
+              <h2 className="font-serif text-4xl md:text-5xl leading-[1.05] tracking-tight text-teal-dark">
+                Questions?{" "}
+                <span className="text-sage italic font-medium">We have answers.</span>
+              </h2>
+            </motion.div>
+
+            {/* FAQ Items */}
+            <div className="space-y-4">
+              {[
+                {
+                  q: "Is StillMind a replacement for counselors?",
+                  a: "No. StillMind helps teams identify need earlier and support prioritization, while counselors remain central to care decisions. The product is designed to enhance human judgment, not replace it.",
+                },
+                {
+                  q: "What do students see?",
+                  a: "Students get a guided, private experience with clear next steps, appointments, and safe progress views. They are not overwhelmed with internal scoring or complex system logic.",
+                },
+                {
+                  q: "What do institutions see?",
+                  a: "Institutions get operational visibility into capacity, demand, and system performance, without access to sensitive session-level clinical details they should not see.",
+                },
+                {
+                  q: "Can StillMind fit existing campus workflows?",
+                  a: "Yes. The product is designed to support real-world resource limits, counselor workflows, and institutional governance needs. We work with campuses to ensure a smooth integration.",
+                },
+              ].map((faq, i) => (
+                <motion.div
+                  key={i}
+                  className="bg-white rounded-2xl border border-teal/[0.08] overflow-hidden"
+                  variants={fadeUp}
+                  initial="hidden"
+                  whileInView="visible"
+                  viewport={{ once: true, margin: "-40px" }}
+                  custom={i * 0.1}
+                >
+                  <div className="p-6 md:p-8">
+                    <h3 className="font-serif text-xl md:text-2xl text-teal-dark mb-3">{faq.q}</h3>
+                    <p className="font-sans text-sm md:text-base text-teal/60 leading-relaxed">{faq.a}</p>
+                  </div>
+                </motion.div>
+              ))}
+            </div>
+          </div>
+        </section>
+
         {/* ── CTA Section ───────────────────────────────────────── */}
-        <section className="snap-section h-screen flex items-center px-8 relative overflow-hidden bg-teal">          {/* Single ambient accent */}
+        <section className="snap-section h-screen flex items-center px-8 relative overflow-hidden bg-teal">
+          {/* Single ambient accent */}
           <div className="absolute top-[-20%] right-[-10%] w-[45%] aspect-square rounded-full bg-sage/[0.12] blur-[120px] pointer-events-none" />
 
           <motion.div
@@ -884,34 +960,34 @@ export default function LandingPage() {
 
             <div className="flex flex-col gap-6">
               <h2 className="font-serif text-5xl md:text-7xl leading-[0.95] tracking-tight text-white">
-                Begin your{" "}
-                <span className="italic text-sage-light font-medium">fresh start.</span>
+                Build a better{" "}
+                <span className="italic text-sage-light font-medium">first step.</span>
               </h2>
               <p className="font-sans text-lg text-foam/60 max-w-lg mx-auto leading-relaxed">
-                Trusted by institutions that believe every student deserves immediate, dignified care.
+                StillMind helps campuses deliver earlier support, calmer experiences, and clearer institutional confidence in mental-health care.
               </p>
             </div>
 
             <div className="flex flex-col sm:flex-row gap-4 items-center">
               <MagneticButton>
                 <Link
-                  href="/register"
+                  href="/contact"
                   className="inline-flex items-center gap-3 bg-white text-teal font-sans font-black text-[11px] uppercase tracking-[0.25em] px-10 py-4 rounded-full hover:bg-foam transition-colors shadow-lg hover:shadow-float"
                 >
-                  Begin Check-in
+                  Book a Demo
                 </Link>
               </MagneticButton>
               <Link
-                href="/login"
+                href="/contact"
                 className="inline-flex items-center gap-3 border border-white/20 text-white/70 hover:text-white hover:border-white/40 font-sans font-black text-[11px] uppercase tracking-[0.25em] px-10 py-4 rounded-full transition-all"
               >
-                Sign In
+                Talk to Our Team
               </Link>
             </div>
 
             {/* Trust row */}
             <div className="flex flex-wrap items-center justify-center gap-8 pt-4 border-t border-white/10 w-full">
-              {["HIPAA Compliant", "ISO 27001", "End-to-End Encrypted", "GDPR Ready"].map((label) => (
+              {["Privacy-first by design", "Built for high-volume campus demand", "Human-centered support", "Clear oversight for campus teams"].map((label) => (
                 <div key={label} className="flex items-center gap-2">
                   <div className="w-1 h-1 rounded-full bg-sage" />
                   <span className="font-sans text-[9px] font-black uppercase tracking-widest text-foam/40">
@@ -925,44 +1001,95 @@ export default function LandingPage() {
       </main>
 
       {/* ── Footer ────────────────────────────────────────────── */}
-      <footer className="py-16 px-10 border-t border-teal/[0.08] bg-[#FAFAF8]">
-        <div className="max-w-6xl mx-auto flex flex-col md:flex-row justify-between items-start md:items-center gap-10">
-          <div className="flex flex-col gap-3">
-            <div className="flex items-center gap-4">
-              <span className="font-serif text-2xl font-black tracking-tighter text-teal-dark">StillMind</span>
-              <span className="text-[9px] font-black uppercase tracking-[0.4em] text-teal/30 border border-teal/10 px-2 py-0.5 rounded-full">
-                v1.0
-              </span>
+      <footer className="py-12 px-8 border-t border-teal/[0.12] bg-[#F0F0EE]">
+        <div className="max-w-6xl mx-auto w-full">
+          {/* Main footer grid - 4 columns */}
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-10 mb-10">
+            {/* Column 1 - Brand */}
+            <div className="col-span-2 md:col-span-1 flex flex-col gap-4">
+              <div className="flex items-center gap-2">
+                <div className="w-7 h-7 rounded-lg bg-teal flex items-center justify-center">
+                  <span className="text-white font-serif text-base font-bold italic">S</span>
+                </div>
+                <span className="font-serif text-lg font-black tracking-tighter text-teal-dark">StillMind</span>
+              </div>
+              <p className="font-sans text-sm text-teal/70 leading-relaxed">
+                A calmer, clearer way to deliver campus mental-health support.
+              </p>
             </div>
-            <p className="font-sans text-xs text-teal/40 max-w-xs leading-relaxed">
-              Ethical campus mental health infrastructure. Built for students, counselors, and institutions.
-            </p>
+
+            {/* Column 2 - Product */}
+            <div className="flex flex-col gap-4">
+              <span className="font-sans text-[10px] font-black uppercase tracking-[0.2em] text-teal/50">Product</span>
+              <nav className="flex flex-col gap-2.5">
+                {[
+                  { label: "Product", href: "#experience" },
+                  { label: "For Students", href: "#outcomes" },
+                  { label: "For Counselors", href: "#outcomes" },
+                  { label: "Book a Demo", href: "/contact" },
+                ].map((link) => (
+                  <Link
+                    key={link.label}
+                    href={link.href}
+                    className="font-sans text-sm text-teal/80 hover:text-teal-dark transition-colors"
+                  >
+                    {link.label}
+                  </Link>
+                ))}
+              </nav>
+            </div>
+
+            {/* Column 3 - Company */}
+            <div className="flex flex-col gap-4">
+              <span className="font-sans text-[10px] font-black uppercase tracking-[0.2em] text-teal/50">Company</span>
+              <nav className="flex flex-col gap-2.5">
+                {[
+                  { label: "About", href: "/about" },
+                  { label: "Contact", href: "/contact" },
+                  { label: "Sign In", href: "/login" },
+                ].map((link) => (
+                  <Link
+                    key={link.label}
+                    href={link.href}
+                    className="font-sans text-sm text-teal/80 hover:text-teal-dark transition-colors"
+                  >
+                    {link.label}
+                  </Link>
+                ))}
+              </nav>
+            </div>
+
+            {/* Column 4 - Trust */}
+            <div className="flex flex-col gap-4">
+              <span className="font-sans text-[10px] font-black uppercase tracking-[0.2em] text-teal/50">Trust</span>
+              <nav className="flex flex-col gap-2.5">
+                {[
+                  { label: "Privacy", href: "/privacy" },
+                  { label: "Terms", href: "/terms" },
+                  { label: "Security", href: "/security" },
+                  { label: "Cookies", href: "/cookies" },
+                ].map((link) => (
+                  <Link
+                    key={link.label}
+                    href={link.href}
+                    className="font-sans text-sm text-teal/80 hover:text-teal-dark transition-colors"
+                  >
+                    {link.label}
+                  </Link>
+                ))}
+              </nav>
+            </div>
           </div>
 
-          <nav className="flex flex-wrap gap-8">
-            {[
-              { label: "Privacy Policy", href: "/privacy" },
-              { label: "Terms of Service", href: "/terms" },
-              { label: "Contact", href: "/contact" },
-            ].map((link) => (
-              <Link
-                key={link.label}
-                href={link.href}
-                className="font-sans text-[10px] font-black uppercase tracking-[0.25em] text-teal/40 hover:text-teal transition-colors underline-reveal"
-              >
-                {link.label}
-              </Link>
-            ))}
-          </nav>
-        </div>
-
-        <div className="max-w-6xl mx-auto mt-12 pt-8 border-t border-teal/[0.06] flex flex-col md:flex-row justify-between items-center gap-4">
-          <p className="text-[9px] font-black uppercase tracking-[0.6em] text-teal/20">
-            © 2026 StillMind. All rights reserved.
-          </p>
-          <p className="text-[9px] font-black uppercase tracking-[0.6em] text-teal/20">
-            Secure · Scalable · Clinical Integrity · London
-          </p>
+          {/* Bottom bar */}
+          <div className="pt-6 border-t border-teal/[0.1] flex flex-col sm:flex-row justify-between items-center gap-3">
+            <p className="font-sans text-[10px] font-black uppercase tracking-[0.15em] text-teal/50">
+              2026 StillMind
+            </p>
+            <p className="font-sans text-[10px] font-black uppercase tracking-[0.12em] text-teal/50">
+              Privacy-first · Human-centered care
+            </p>
+          </div>
         </div>
       </footer>
     </div>

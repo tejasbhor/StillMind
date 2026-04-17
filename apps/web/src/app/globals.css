@@ -68,18 +68,16 @@ body {
 
 /* ── Scroll Snap Container ──────────────────────────────── */
 .snap-container {
-  height: 100vh;
-  overflow-y: scroll;
-  scroll-snap-type: y mandatory;
+  scroll-snap-type: y proximity;
   scroll-behavior: smooth;
-  overscroll-behavior-y: contain;
 }
 
 .snap-section {
   scroll-snap-align: start;
-  scroll-snap-stop: always;
   min-height: 100vh;
 }
+
+/* Footer is NOT a snap section - it flows naturally */
 
 /* ── Typography ─────────────────────────────────────────── */
 h1, h2, h3 {
