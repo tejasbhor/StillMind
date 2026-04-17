@@ -1,6 +1,6 @@
 "use client";
 
-import { cn } from "@/lib/cn";
+import { cn } from "@/utils/cn";
 import { motion, AnimatePresence } from "framer-motion";
 import { type ButtonHTMLAttributes, forwardRef, useState, useRef, MouseEvent } from "react";
 
@@ -136,3 +136,4 @@ const Button = forwardRef<HTMLButtonElement, ButtonProps>(
 
 Button.displayName = "Button";
 export default Button;
+

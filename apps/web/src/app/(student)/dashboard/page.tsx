@@ -6,10 +6,10 @@ import Card from "@/components/ui/Card";
 import Button from "@/components/ui/Button";
 import { LoadingState } from "@/components/ui/LoadingState";
 import { ErrorState } from "@/components/ui/ErrorState";
-import { cn } from "@/lib/cn";
-import { type AllocationStatus } from "@/lib/constants";
-import { api } from "@/lib/api";
-import { useAuthStore } from "@/lib/auth-store";
+import { cn } from "@/utils/cn";
+import { type AllocationStatus } from "@/utils/constants";
+import { api } from "@/services/api";
+import { useAuthStore } from "@/hooks/auth-store";
 
 const SOFT_STYLE: Record<string, { bg: string; border: string; dot: string; text: string }> = {
   GREEN:  { bg: "#E8F2EE", border: "#B8D4C0", dot: "#7BA89A",  text: "#3D5A54" },
@@ -238,3 +238,4 @@ export default function StudentDashboard() {
     </div>
   );
 }
+

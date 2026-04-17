@@ -1,4 +1,5 @@
 import Link from "next/link";
+import Logo from "@/components/brand/Logo";
 
 export default function AuthLayout({ children }: { children: React.ReactNode }) {
   return (
@@ -17,9 +18,7 @@ export default function AuthLayout({ children }: { children: React.ReactNode }) 
           <div aria-hidden className="orb animate-float-fast w-36 h-36 top-1/2 right-4"
             style={{ background: "radial-gradient(circle, #E8D4B0, transparent 70%)", animationDelay: "0.5s" }} />
 
-          <Link href="/" className="relative z-10 flex items-center gap-2">
-            <img src="/logo.png" alt="StillMind Logo" className="h-[64px] w-auto mix-blend-multiply -ml-2" />
-          </Link>
+          <Logo iconSize="lg" className="-ml-3" />
 
           <div className="relative z-10 flex flex-col gap-6">
             <h2 className="font-serif text-[2.6rem] leading-[1.15] text-[#3D5A54]">
@@ -42,9 +41,7 @@ export default function AuthLayout({ children }: { children: React.ReactNode }) 
         {/* Right panel — form */}
         <div className="flex-1 flex flex-col items-center justify-center px-6 py-14">
           {/* Mobile logo */}
-          <Link href="/" className="lg:hidden flex items-center gap-2 mb-10">
-            <img src="/logo.png" alt="StillMind Logo" className="h-[44px] w-auto mix-blend-multiply" />
-          </Link>
+          <Logo iconSize="md" className="lg:hidden mb-10" />
 
           <div className="w-full max-w-md">{children}</div>
         </div>
@@ -52,3 +49,4 @@ export default function AuthLayout({ children }: { children: React.ReactNode }) 
     </>
   );
 }
+

@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react";
 import Link from "next/link";
 import Card from "@/components/ui/Card";
-import { api, adminApi } from "@/lib/api";
+import { api, adminApi } from "@/services/api";
 import { PieChart, Pie, Cell, Tooltip, ResponsiveContainer } from "recharts";
 
 interface RiskDistribution {
@@ -240,3 +240,4 @@ export default function AdminDashboard() {
     </div>
   );
 }
+

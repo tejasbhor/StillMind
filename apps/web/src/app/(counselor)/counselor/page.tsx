@@ -6,10 +6,10 @@ import Card from "@/components/ui/Card";
 import Button from "@/components/ui/Button";
 import RiskBadge from "@/components/shared/RiskBadge";
 import TrendIndicator from "@/components/shared/TrendIndicator";
-import { cn } from "@/lib/cn";
-import { api } from "@/lib/api";
-import { useAuthStore } from "@/lib/auth-store";
-import type { RiskLevel, TrendValue } from "@/lib/constants";
+import { cn } from "@/utils/cn";
+import { api } from "@/services/api";
+import { useAuthStore } from "@/hooks/auth-store";
+import type { RiskLevel, TrendValue } from "@/utils/constants";
 
 const SESSION_STATUS_CHIP: Record<string, string> = {
   CONFIRMED: "bg-[#E8F2EE] text-[#3D5A54] border-[#B8D4C0]",
@@ -163,3 +163,4 @@ export default function CounselorDashboard() {
     </div>
   );
 }
+

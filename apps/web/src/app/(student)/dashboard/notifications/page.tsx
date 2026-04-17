@@ -4,7 +4,7 @@ import { useState } from "react";
 import { EmptyState } from "@/components/ui/EmptyState";
 import Card from "@/components/ui/Card";
 import Button from "@/components/ui/Button";
-import { cn } from "@/lib/cn";
+import { cn } from "@/utils/cn";
 
 // Mock notification data following the API contract
 const MOCK_NOTIFICATIONS = [
@@ -141,3 +141,4 @@ export default function NotificationsPage() {
     </div>
   );
 }
+

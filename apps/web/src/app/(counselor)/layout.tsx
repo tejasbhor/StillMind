@@ -3,8 +3,9 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useState } from "react";
-import { cn } from "@/lib/cn";
-import { COUNSELOR_NAV } from "@/lib/constants";
+import { cn } from "@/utils/cn";
+import Logo from "@/components/brand/Logo";
+import { COUNSELOR_NAV } from "@/utils/constants";
 
 const ICONS: Record<string, string> = {
   LayoutDashboard: "⊡",
@@ -33,10 +34,9 @@ export default function CounselorLayout({ children }: { children: React.ReactNod
             "lg:relative lg:translate-x-0"
           )}
         >
-          {/* Logo + today count */}
           <div className="px-6 py-6 border-b border-[#E8F2EE]">
             <div className="flex items-center gap-2 mb-4">
-              <img src="/logo.png" alt="StillMind Logo" className="h-[60px] w-auto mix-blend-multiply flex-shrink-0" />
+              <Logo iconSize="md" />
             </div>
             <div className="rounded-xl bg-[#E8F2EE] border border-[#B8D4C0] px-4 py-3">
               <p className="font-sans text-xs text-[#3D5A54]/60">Today's sessions</p>
@@ -123,3 +123,4 @@ export default function CounselorLayout({ children }: { children: React.ReactNod
     </>
   );
 }
+

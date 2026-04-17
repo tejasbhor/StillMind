@@ -6,9 +6,9 @@ import Button from "@/components/ui/Button";
 import RiskBadge from "@/components/shared/RiskBadge";
 import TrendIndicator from "@/components/shared/TrendIndicator";
 import Modal from "@/components/ui/Modal";
-import { cn } from "@/lib/cn";
-import { MOOD_LABELS, KEY_CONCERNS, KEY_CONCERN_LABELS } from "@/lib/constants";
-import type { MoodValue, TrendValue } from "@/lib/constants";
+import { cn } from "@/utils/cn";
+import { MOOD_LABELS, KEY_CONCERNS, KEY_CONCERN_LABELS } from "@/utils/constants";
+import type { MoodValue, TrendValue } from "@/utils/constants";
 
 // ── Mock student data ──────────────────────────────────────────────────────────
 const STUDENT = {

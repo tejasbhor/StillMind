@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import Logo from "@/components/brand/Logo";
 
 export default function TermsPage() {
   return (
@@ -8,9 +9,7 @@ export default function TermsPage() {
       {/* ── Nav ─────────────────────────────────────────────────────────────── */}
       <header className="fixed top-0 left-0 right-0 z-40 flex items-center px-6 md:px-8 py-3 bg-white/80 backdrop-blur-md border-b border-[#E8F2EE]">
         <div className="flex-1 flex items-center gap-2">
-          <Link href="/" className="flex items-center gap-2">
-            <img src="/logo.png" alt="StillMind Logo" className="h-11 w-auto" />
-          </Link>
+          <Logo iconSize="md" />
         </div>
         <nav className="hidden md:flex flex-[2] justify-center items-center gap-8">
           <Link href="/#features" className="font-sans text-sm font-medium text-[#3D5A54] hover:text-[#1C3530]">Features</Link>
@@ -97,7 +96,7 @@ export default function TermsPage() {
       <footer className="border-t border-[#E8F2EE] px-6 py-8">
         <div className="mx-auto max-w-5xl flex flex-col md:flex-row items-center justify-between gap-4">
           <div className="flex items-center gap-2">
-            <img src="/logo.png" alt="StillMind Logo" className="h-10 w-auto" />
+            <Logo iconSize="md" />
           </div>
           <p className="font-sans text-xs text-[#3D5A54]/50">
             A rule-based, explainable mental health triage platform · v1.0 · 2026

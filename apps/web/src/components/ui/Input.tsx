@@ -1,6 +1,6 @@
 "use client";
 
-import { cn } from "@/lib/cn";
+import { cn } from "@/utils/cn";
 import { motion, AnimatePresence } from "framer-motion";
 import { type InputHTMLAttributes, forwardRef, useState, useEffect } from "react";
 
@@ -194,3 +194,4 @@ const Input = forwardRef<HTMLInputElement, InputProps>(
 
 Input.displayName = "Input";
 export default Input;
+

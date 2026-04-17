@@ -3,7 +3,7 @@
 import { useState } from "react";
 import Card from "@/components/ui/Card";
 import Button from "@/components/ui/Button";
-import { cn } from "@/lib/cn";
+import { cn } from "@/utils/cn";
 
 type Tab = "resource" | "thresholds" | "weights";
 
@@ -216,3 +216,4 @@ export default function AdminConfigPage() {
     </div>
   );
 }
+

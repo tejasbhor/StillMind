@@ -1,6 +1,6 @@
 "use client";
 
-import { cn } from "@/lib/cn";
+import { cn } from "@/utils/cn";
 
 interface LoadingStateProps {
   size?: "sm" | "md" | "lg";

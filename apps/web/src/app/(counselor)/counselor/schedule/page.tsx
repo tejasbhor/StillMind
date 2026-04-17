@@ -4,7 +4,7 @@ import { useState } from "react";
 import Link from "next/link";
 import Card from "@/components/ui/Card";
 import Button from "@/components/ui/Button";
-import { cn } from "@/lib/cn";
+import { cn } from "@/utils/cn";
 
 // Mock schedule data aligned with API contract
 const SESSIONS = [
@@ -180,3 +180,4 @@ export default function CounselorSchedulePage() {
     </div>
   );
 }
+

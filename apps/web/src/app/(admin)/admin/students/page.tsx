@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 import Card from "@/components/ui/Card";
-import { adminApi, type AdminStudent } from "@/lib/api";
+import { adminApi, type AdminStudent } from "@/services/api";
 
 export default function AdminStudentsPage() {
   const [students, setStudents] = useState<AdminStudent[]>([]);
@@ -88,3 +88,4 @@ export default function AdminStudentsPage() {
     </div>
   );
 }
+

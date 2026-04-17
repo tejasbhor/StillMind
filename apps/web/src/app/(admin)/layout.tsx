@@ -2,9 +2,10 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import Logo from "@/components/brand/Logo";
 import { useState } from "react";
-import { cn } from "@/lib/cn";
-import { ADMIN_NAV } from "@/lib/constants";
+import { cn } from "@/utils/cn";
+import { ADMIN_NAV } from "@/utils/constants";
 
 const ICONS: Record<string, string> = {
   BarChart3:       "▦",
@@ -32,9 +33,8 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
             "lg:relative lg:translate-x-0"
           )}
         >
-          {/* Logo */}
-          <div className="flex flex-col justify-center px-6 py-5 border-b border-[#E8F2EE]">
-             <img src="/logo.png" alt="StillMind Logo" className="h-14 w-auto mix-blend-multiply object-contain origin-left mb-1" />
+          <div className="flex flex-col justify-center px-4 py-5 border-b border-[#E8F2EE]">
+             <Logo iconSize="md" className="mb-1" />
              <p className="font-sans text-[10px] text-[#3D5A54]/40 tracking-wider">Admin Console</p>
           </div>
 
@@ -109,3 +109,4 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
     </>
   );
 }
+

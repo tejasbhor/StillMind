@@ -1,5 +1,5 @@
-import { cn } from "@/lib/cn";
-import { type TrendValue } from "@/lib/constants";
+import { cn } from "@/utils/cn";
+import { type TrendValue } from "@/utils/constants";
 
 interface TrendIndicatorProps {
   trend: TrendValue;
@@ -38,3 +38,4 @@ export default function TrendIndicator({
     </span>
   );
 }
+

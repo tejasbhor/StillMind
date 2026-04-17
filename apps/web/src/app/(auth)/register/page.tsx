@@ -7,8 +7,8 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import Button from "@/components/ui/Button";
 import Input from "@/components/ui/Input";
-import { cn } from "@/lib/cn";
-import { api } from "@/lib/api";
+import { cn } from "@/utils/cn";
+import { api } from "@/services/api";
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL ?? "/api/v1";
 
@@ -300,3 +300,4 @@ export default function RegisterPage() {
     </div>
   );
 }
+

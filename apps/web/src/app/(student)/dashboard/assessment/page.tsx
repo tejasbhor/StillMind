@@ -2,14 +2,14 @@
 
 import { useState, useEffect } from "react";
 import Button from "@/components/ui/Button";
-import { cn } from "@/lib/cn";
-import { api } from "@/lib/api";
+import { cn } from "@/utils/cn";
+import { api } from "@/services/api";
 import {
   PHQ9_QUESTIONS,
   PHQ9_Q9_WARNING,
   GAD7_QUESTIONS,
   RESPONSE_SCALE,
-} from "@/lib/constants";
+} from "@/utils/constants";
 
 // ── Types ──────────────────────────────────────────────────────────────────────
 type SleepScore     = 1 | 2 | 3 | 4 | 5;
@@ -441,3 +441,4 @@ export default function AssessmentPage() {
     </div>
   );
 }
+

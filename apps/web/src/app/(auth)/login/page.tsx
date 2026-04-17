@@ -7,7 +7,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import Button from "@/components/ui/Button";
 import Input from "@/components/ui/Input";
-import { useAuthStore } from "@/lib/auth-store";
+import { useAuthStore } from "@/hooks/auth-store";
 
 const schema = z.object({
   email:    z.string().email("Please enter a valid email"),
@@ -152,3 +152,4 @@ export default function LoginPage() {
     </div>
   );
 }
+

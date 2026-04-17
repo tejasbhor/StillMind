@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 import Card from "@/components/ui/Card";
-import { adminApi } from "@/lib/api";
+import { adminApi } from "@/services/api";
 
 interface EngagementMetrics {
   assessment_completion_rate: number;
@@ -83,3 +83,4 @@ export default function AdminAnalyticsPage() {
     </div>
   );
 }
+

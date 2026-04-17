@@ -4,7 +4,7 @@ import { useState } from "react";
 import Card from "@/components/ui/Card";
 import Button from "@/components/ui/Button";
 import Modal from "@/components/ui/Modal";
-import { cn } from "@/lib/cn";
+import { cn } from "@/utils/cn";
 
 const MOCK_APPOINTMENT = {
   id: "apl-001",
@@ -193,3 +193,4 @@ export default function AppointmentsPage() {
     </div>
   );
 }
+

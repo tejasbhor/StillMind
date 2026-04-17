@@ -163,68 +163,69 @@ export const authApi = {
 
 export const studentApi = {
   // Profile
-  getProfile: () => apiFetch<any>("/students/me/profile"),
+  getProfile: () => apiFetch<{ data: any }>("/students/me/profile"),
   updateProfile: (data: { full_name?: string | null; phone?: string | null; guardian_contact?: any; version?: number | null }) => 
-    apiFetch<any>("/students/me/profile", { method: "PATCH", body: JSON.stringify(data) }),
+    apiFetch<{ data: any }>("/students/me/profile", { method: "PATCH", body: JSON.stringify(data) }),
   
   // Consents
-  getConsents: () => apiFetch<any>("/students/me/consents"),
-  submitConsents: (data: any) => apiFetch<any>("/students/me/consents", { method: "PUT", body: JSON.stringify(data) }),
+  getConsents: () => apiFetch<{ data: any }>("/students/me/consents"),
+  submitConsents: (data: any) => apiFetch<{ data: any }>("/students/me/consents", { method: "PUT", body: JSON.stringify(data) }),
   
   // Risk
-  getRiskSummary: () => apiFetch<any>("/students/me/risk-summary"),
+  getRiskSummary: () => apiFetch<{ data: { level: string; score: number; trend: string } }>("/students/me/risk-summary"),
   
   // Assessments
-  getAssessments: (limit = 20, offset = 0) => apiFetch<any>(`/students/me/assessments?limit=${limit}&offset=${offset}`),
-  submitAssessment: (data: any) => apiFetch<any>("/students/me/assessments", { method: "POST", body: JSON.stringify(data) }),
+  getAssessments: (limit = 20, offset = 0) => apiFetch<{ data: any[] }>(`/students/me/assessments?limit=${limit}&offset=${offset}`),
+  submitAssessment: (data: any) => apiFetch<{ data: any }>("/students/me/assessments", { method: "POST", body: JSON.stringify(data) }),
   
   // Sessions
-  getSessions: (limit = 20, offset = 0) => apiFetch<any>(`/students/me/sessions?limit=${limit}&offset=${offset}`),
-  getSessionSummaries: (limit = 20, offset = 0) => apiFetch<any>(`/students/me/session-summaries?limit=${limit}&offset=${offset}`),
+  getSessions: (limit = 20, offset = 0) => apiFetch<{ data: any[] }>(`/students/me/sessions?limit=${limit}&offset=${offset}`),
+  getSessionSummaries: (limit = 20, offset = 0) => apiFetch<{ data: any[] }>(`/students/me/session-summaries?limit=${limit}&offset=${offset}`),
   
   // Allocation
-  getAllocation: () => apiFetch<any>("/students/me/allocation"),
+  getAllocation: () => apiFetch<{ data: any }>("/students/me/allocation"),
   confirmAllocation: (idempotency_key: string) => 
-    apiFetch<any>("/students/me/allocation/confirm", { method: "POST", body: JSON.stringify({ idempotency_key }) }),
+    apiFetch<{ data: any }>("/students/me/allocation/confirm", { method: "POST", body: JSON.stringify({ idempotency_key }) }),
   declineAllocation: (idempotency_key: string, reason?: string) => 
-    apiFetch<any>("/students/me/allocation/decline", { method: "POST", body: JSON.stringify({ idempotency_key, reason }) }),
+    apiFetch<{ data: any }>("/students/me/allocation/decline", { method: "POST", body: JSON.stringify({ idempotency_key, reason }) }),
   rescheduleAllocation: (idempotency_key: string) => 
-    apiFetch<any>("/students/me/allocation/reschedule", { method: "POST", body: JSON.stringify({ idempotency_key }) }),
+    apiFetch<{ data: any }>("/students/me/allocation/reschedule", { method: "POST", body: JSON.stringify({ idempotency_key }) }),
 };
 
 // ── Counselor ─────────────────────────────────────────────────────────────────
 
 export const counselorApi = {
   // Dashboard
-  getDashboard: () => apiFetch<any>("/counselors/me/dashboard"),
-  getCapacity: () => apiFetch<any>("/counselors/me/capacity"),
+  getDashboard: () => apiFetch<{ data: any }>("/counselors/me/dashboard"),
+  getCapacity: () => apiFetch<{ data: any }>("/counselors/me/capacity"),
   
   // Priority Queue
-  getPriorityQueue: () => apiFetch<any>("/counselors/me/priority-queue"),
-  getWaitlist: () => apiFetch<any>("/counselors/me/waitlist"),
+  getPriorityQueue: () => apiFetch<{ data: any[] }>("/counselors/me/priority-queue"),
+  getWaitlist: () => apiFetch<{ data: any[] }>("/counselors/me/waitlist"),
   
   // Sessions
   getSessions: (date?: string, limit = 20, offset = 0) => 
-    apiFetch<any>(`/counselors/me/sessions?${date ? `date=${date}&` : ''}limit=${limit}&offset=${offset}`),
+    apiFetch<{ data: any[] }>(`/counselors/me/sessions?${date ? `date=${date}&` : ''}limit=${limit}&offset=${offset}`),
   
   // Student Case View - PRD §8.2
-  getStudent: (studentId: string) => apiFetch<any>(`/counselors/me/students/${studentId}`),
-  getStudentRisk: (studentId: string) => apiFetch<any>(`/counselors/me/students/${studentId}/risk`),
+  getStudent: (studentId: string) => apiFetch<{ data: any }>(`/counselors/me/students/${studentId}`),
+  getStudentRisk: (studentId: string) => apiFetch<{ data: any }>(`/counselors/me/students/${studentId}/risk`),
   getStudentTimeline: (studentId: string, limit = 50, offset = 0) => 
-    apiFetch<any>(`/counselors/me/students/${studentId}/timeline?limit=${limit}&offset=${offset}`),
+    apiFetch<{ data: any[] }>(`/counselors/me/students/${studentId}/timeline?limit=${limit}&offset=${offset}`),
   getStudentAssessments: (studentId: string, limit = 20, offset = 0) => 
-    apiFetch<any>(`/counselors/me/students/${studentId}/assessments?limit=${limit}&offset=${offset}`),
+    apiFetch<{ data: any[] }>(`/counselors/me/students/${studentId}/assessments?limit=${limit}&offset=${offset}`),
   
   // Session Actions
   markNoShow: (sessionId: string) =>
-    apiFetch<any>(`/counselors/sessions/${sessionId}/mark-no-show`, { method: "POST" }),
+    apiFetch<{ data: any }>(`/counselors/sessions/${sessionId}/mark-no-show`, { method: "POST" }),
   logSessionNote: (sessionId: string, data: any) =>
-    apiFetch<any>(`/counselors/sessions/${sessionId}/notes`, { method: "POST", body: JSON.stringify(data) }),
+    apiFetch<{ data: any }>(`/counselors/sessions/${sessionId}/notes`, { method: "POST", body: JSON.stringify(data) }),
   logOutcome: (sessionId: string, data: any) =>
-    apiFetch<any>(`/counselors/sessions/${sessionId}/outcome`, { method: "POST", body: JSON.stringify(data) }),
+    apiFetch<{ data: any }>(`/counselors/sessions/${sessionId}/outcome`, { method: "POST", body: JSON.stringify(data) }),
   logOverride: (allocationId: string, data: any) =>
-    apiFetch<any>(`/counselors/sessions/${allocationId}/override`, { method: "POST", body: JSON.stringify(data) }),
+    apiFetch<{ data: any }>(`/counselors/sessions/${allocationId}/override`, { method: "POST", body: JSON.stringify(data) }),
 };
+
 
 // ── Admin ─────────────────────────────────────────────────────────────────────
 
@@ -270,12 +271,16 @@ export const adminApi = {
   getCounselors: (limit = 20, offset = 0, is_active?: boolean, search?: string) => 
     apiFetch<any>(`/admin/counselors?limit=${limit}&offset=${offset}${is_active !== undefined ? `&is_active=${is_active}` : ''}${search ? `&search=${search}` : ''}`),
   getCounselor: (counselorId: string) => apiFetch<any>(`/admin/counselors/${counselorId}`),
-  createCounselor: (data: { email: string; full_name: string; password: string; max_active_cases?: number }) => 
+  createCounselor: (data: { email: string; full_name: string; password?: string; max_slots_day?: number }) => 
     apiFetch<any>("/admin/counselors", { method: "POST", body: JSON.stringify(data) }),
+  activateCounselor: (counselorId: string) => 
+    apiFetch<any>(`/admin/counselors/${counselorId}/status?is_active=true`, { method: "PATCH" }),
+  deactivateCounselor: (counselorId: string, reason?: string) => 
+    apiFetch<any>(`/admin/counselors/${counselorId}/status?is_active=false${reason ? `&reason=${reason}` : ''}`, { method: "PATCH" }),
   updateCounselorStatus: (counselorId: string, is_active: boolean) => 
     apiFetch<any>(`/admin/counselors/${counselorId}/status?is_active=${is_active}`, { method: "PATCH" }),
-  updateCounselorCapacity: (counselorId: string, max_active_cases: number) => 
-    apiFetch<any>(`/admin/counselors/${counselorId}/capacity`, { method: "PATCH", body: JSON.stringify({ max_active_cases }) }),
+  updateCounselorCapacity: (counselorId: string, max_slots_day: number) => 
+    apiFetch<any>(`/admin/counselors/${counselorId}/capacity`, { method: "PATCH", body: JSON.stringify({ max_slots_day }) }),
   deleteCounselor: (counselorId: string) => 
     apiFetch<any>(`/admin/counselors/${counselorId}`, { method: "DELETE" }),
   reassignCounselor: (data: { from_counselor_id: string; to_counselor_id: string; reason?: string }) => 
@@ -347,3 +352,4 @@ export const chatApi = {
       `/chat/rooms/${allocationId}/messages?limit=${limit}&offset=${offset}`
     ),
 };
+

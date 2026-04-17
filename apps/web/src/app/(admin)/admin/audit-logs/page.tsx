@@ -2,7 +2,7 @@
 
 import React, { useState, Fragment } from "react";
 import Card from "@/components/ui/Card";
-import { cn } from "@/lib/cn";
+import { cn } from "@/utils/cn";
 
 const LOGS = [
   { id: "al1", time: "2026-04-16 08:44:12", actor: "admin@uni.edu", role: "admin",    action: "COUNSELOR_DEACTIVATED",   resource: "counselor_profiles", resourceId: "c4", meta: { reason: "On leave" } },
@@ -117,3 +117,4 @@ export default function AuditLogsPage() {
     </div>
   );
 }
+

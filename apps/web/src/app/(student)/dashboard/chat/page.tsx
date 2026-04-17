@@ -5,9 +5,9 @@ import { EmptyState } from "@/components/ui/EmptyState";
 import { LoadingState } from "@/components/ui/LoadingState";
 import { ErrorState } from "@/components/ui/ErrorState";
 import Button from "@/components/ui/Button";
-import { cn } from "@/lib/cn";
-import { chatApi, tokenStore, type ChatConversation, type ChatMessageItem } from "@/lib/api";
-import { useSocket } from "@/lib/use-socket";
+import { cn } from "@/utils/cn";
+import { chatApi, tokenStore, type ChatConversation, type ChatMessageItem } from "@/services/api";
+import { useSocket } from "@/hooks/use-socket";
 
 function formatTime(iso: string) {
   try {
@@ -236,3 +236,4 @@ export default function StudentChatPage() {
     </div>
   );
 }
+

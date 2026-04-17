@@ -1,7 +1,18 @@
 {
-  "dependencies": {
-    "@react-three/fiber": "^9.6.0",
-    "@types/three": "^0.184.0",
-    "three": "^0.184.0"
+  "name": "stillmind-root",
+  "version": "1.0.0",
+  "private": true,
+  "workspaces": [
+    "apps/web"
+  ],
+  "scripts": {
+    "dev:web": "npm run dev --prefix apps/web",
+    "dev:api": "cd apps/api && uv run uvicorn app.main:app --reload",
+    "dev": "npm run dev:web",
+    "build": "npm run build --prefix apps/web",
+    "clean": "rimraf apps/web/.next apps/web/node_modules node_modules"
+  },
+  "devDependencies": {
+    "rimraf": "^6.0.0"
   }
 }

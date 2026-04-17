@@ -88,3 +88,4 @@ export const mockResponse = <T>(data: T, message?: string): ApiResponse<T> => ({
     timestamp: new Date().toISOString(),
   },
 });
+

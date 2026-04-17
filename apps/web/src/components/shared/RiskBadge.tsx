@@ -1,5 +1,5 @@
-import { cn } from "@/lib/cn";
-import { type RiskLevel } from "@/lib/constants";
+import { cn } from "@/utils/cn";
+import { type RiskLevel } from "@/utils/constants";
 
 interface RiskBadgeProps {
   level: RiskLevel;
@@ -67,3 +67,4 @@ export default function RiskBadge({
     </span>
   );
 }
+

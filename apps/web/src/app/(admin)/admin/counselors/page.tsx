@@ -5,8 +5,8 @@ import Card from "@/components/ui/Card";
 import Button from "@/components/ui/Button";
 import Input from "@/components/ui/Input";
 import Modal from "@/components/ui/Modal";
-import { cn } from "@/lib/cn";
-import { adminApi, type AdminCounselor } from "@/lib/api";
+import { cn } from "@/utils/cn";
+import { adminApi, type AdminCounselor } from "@/services/api";
 
 interface CounselorData extends AdminCounselor {
   name?: string;
@@ -198,3 +198,4 @@ export default function AdminCounselorsPage() {
     </div>
   );
 }
+

@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useCallback, useState } from "react";
 import { io, Socket } from "socket.io-client";
-import { tokenStore } from "@/lib/api";
+import { tokenStore } from "@/services/api";
 
 const SOCKET_URL = process.env.NEXT_PUBLIC_SOCKET_URL ?? 
   (process.env.NEXT_PUBLIC_API_URL ? process.env.NEXT_PUBLIC_API_URL.replace("/api/v1", "") : "");
@@ -45,6 +45,7 @@ export function useSocket({
   onMessagesRead,
 }: UseSocketOptions = {}): UseSocketReturn {
   const socketRef = useRef<Socket | null>(null);
+  const [socket, setSocket] = useState<Socket | null>(null);
   const [connected, setConnected] = useState(false);
   const typingTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
@@ -52,7 +53,7 @@ export function useSocket({
     const token = tokenStore.getAccess();
     if (!token) return;
 
-    const socket = io(SOCKET_URL, {
+    const newSocket = io(SOCKET_URL, {
       path: "/socket.io",
       auth: { token },
       transports: ["websocket", "polling"],
@@ -64,44 +65,45 @@ export function useSocket({
       timeout: 20000,
     });
 
-    socketRef.current = socket;
+    socketRef.current = newSocket;
+    setSocket(newSocket);
 
-    socket.on("connect", () => {
+    newSocket.on("connect", () => {
       setConnected(true);
       console.log("[Socket.IO] Connected");
       
       // Re-join room on reconnect
       if (allocationId) {
-        socket.emit("join_chat", { room: allocationId });
+        newSocket.emit("join_chat", { room: allocationId });
       }
     });
 
-    socket.on("disconnect", (reason) => {
+    newSocket.on("disconnect", (reason) => {
       setConnected(false);
       console.log("[Socket.IO] Disconnected:", reason);
     });
 
-    socket.on("connect_error", (err) => {
+    newSocket.on("connect_error", (err) => {
       console.error("[Socket.IO] connect_error:", err.message);
       setConnected(false);
     });
 
-    socket.on("reconnect", (attemptNumber) => {
+    newSocket.on("reconnect", (attemptNumber) => {
       console.log("[Socket.IO] Reconnected after", attemptNumber, "attempts");
       setConnected(true);
     });
 
-    socket.on("reconnect_attempt", (attemptNumber) => {
+    newSocket.on("reconnect_attempt", (attemptNumber) => {
       console.log("[Socket.IO] Reconnect attempt:", attemptNumber);
     });
 
-    socket.on("reconnect_failed", () => {
+    newSocket.on("reconnect_failed", () => {
       console.error("[Socket.IO] Reconnect failed");
     });
 
     // Message handlers
     if (onMessage) {
-      socket.on("chat_message", (msg) => {
+      newSocket.on("chat_message", (msg) => {
         // Deduplicate by message ID
         if (_sentMessages.has(msg.id)) {
           _sentMessages.delete(msg.id);
@@ -112,35 +114,36 @@ export function useSocket({
     }
 
     if (onUserJoined) {
-      socket.on("user_joined", onUserJoined);
+      newSocket.on("user_joined", onUserJoined);
     }
 
     if (onTyping) {
-      socket.on("typing", onTyping);
+      newSocket.on("typing", onTyping);
     }
 
     if (onMessageEdited) {
-      socket.on("message_edited", onMessageEdited);
+      newSocket.on("message_edited", onMessageEdited);
     }
 
     if (onMessageDeleted) {
-      socket.on("message_deleted", onMessageDeleted);
+      newSocket.on("message_deleted", onMessageDeleted);
     }
 
     if (onMessagesRead) {
-      socket.on("messages_read", onMessagesRead);
+      newSocket.on("messages_read", onMessagesRead);
     }
 
     // Auto-join room if allocationId provided
     if (allocationId) {
-      socket.on("connect", () => {
-        socket.emit("join_chat", { room: allocationId });
+      newSocket.on("connect", () => {
+        newSocket.emit("join_chat", { room: allocationId });
       });
     }
 
     return () => {
-      socket.disconnect();
+      newSocket.disconnect();
       socketRef.current = null;
+      setSocket(null);
       setConnected(false);
     };
   }, [allocationId]); // eslint-disable-line react-hooks/exhaustive-deps
@@ -221,7 +224,7 @@ export function useSocket({
   );
 
   return {
-    socket: socketRef.current,
+    socket,
     connected,
     sendMessage,
     joinRoom,
@@ -231,3 +234,4 @@ export function useSocket({
     deleteMessage,
   };
 }
+

@@ -1,8 +1,8 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
-import { studentApi } from "@/lib/api";
-import { useAuthStore } from "@/lib/auth-store";
+import { studentApi } from "@/services/api";
+import { useAuthStore } from "@/hooks/auth-store";
 import PageHeader from "@/components/ui/PageHeader";
 
 interface StudentProfile {

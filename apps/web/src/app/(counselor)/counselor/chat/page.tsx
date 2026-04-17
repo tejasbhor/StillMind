@@ -2,9 +2,9 @@
 
 import { useState, useRef, useEffect, useCallback } from "react";
 import Button from "@/components/ui/Button";
-import { cn } from "@/lib/cn";
-import { chatApi, type ChatConversation, type ChatMessageItem } from "@/lib/api";
-import { useSocket } from "@/lib/use-socket";
+import { cn } from "@/utils/cn";
+import { chatApi, type ChatConversation, type ChatMessageItem } from "@/services/api";
+import { useSocket } from "@/hooks/use-socket";
 
 function formatTime(iso: string) {
   try { return new Date(iso).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }); }
@@ -178,3 +178,4 @@ export default function CounselorChatPage() {
     </div>
   );
 }
+

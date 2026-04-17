@@ -4,7 +4,7 @@ import { useState } from "react";
 import Link from "next/link";
 import Card from "@/components/ui/Card";
 import Button from "@/components/ui/Button";
-import { cn } from "@/lib/cn";
+import { cn } from "@/utils/cn";
 
 const TIMELINE = [
   {
@@ -297,3 +297,4 @@ export default function ProgressPage() {
     </div>
   );
 }
+

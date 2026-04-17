@@ -4,7 +4,7 @@
  */
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
-import { authApi, type AuthUser, type LoginPayload } from "@/lib/api";
+import { authApi, type AuthUser, type LoginPayload } from "@/services/api";
 
 interface AuthState {
   user: AuthUser | null;
@@ -63,3 +63,4 @@ export const useAuthStore = create<AuthState>()(
     }
   )
 );
+

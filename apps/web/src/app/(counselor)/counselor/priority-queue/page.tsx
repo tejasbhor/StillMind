@@ -9,9 +9,9 @@ import { LoadingState } from "@/components/ui/LoadingState";
 import { ErrorState } from "@/components/ui/ErrorState";
 import RiskBadge from "@/components/shared/RiskBadge";
 import TrendIndicator from "@/components/shared/TrendIndicator";
-import { cn } from "@/lib/cn";
-import { api } from "@/lib/api";
-import type { RiskLevel, TrendValue } from "@/lib/constants";
+import { cn } from "@/utils/cn";
+import { api } from "@/services/api";
+import type { RiskLevel, TrendValue } from "@/utils/constants";
 
 type Student = {
   id: string; studentId: string; initials: string;
@@ -185,3 +185,4 @@ export default function PriorityQueuePage() {
     </div>
   );
 }
+

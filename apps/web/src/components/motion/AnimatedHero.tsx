@@ -39,8 +39,22 @@ export function AnimatedHero({ className = "" }: AnimatedHeroProps) {
 
   return (
     <div ref={containerRef} className={`absolute inset-0 overflow-hidden ${className}`}>
-      {/* Base background */}
-      <div className="absolute inset-0 bg-[#FCFCFA]" />
+      {/* Base background image - the high-fidelity mesh */}
+      <motion.div 
+        className="absolute inset-0 z-0 bg-[#FCFCFA]"
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        transition={{ duration: 1.5 }}
+      >
+        <img 
+          src="/hero-mesh.png" 
+          alt="" 
+          className="w-full h-full object-cover opacity-80"
+          aria-hidden="true"
+        />
+        {/* Soft overlay to ensure text readability */}
+        <div className="absolute inset-0 bg-gradient-to-r from-[#FCFCFA] via-[#FCFCFA]/40 to-transparent" />
+      </motion.div>
 
       {/* Animated gradient orbs - organic flowing motion */}
       <motion.div
@@ -146,3 +160,4 @@ export function AnimatedHero({ className = "" }: AnimatedHeroProps) {
     </div>
   );
 }
+

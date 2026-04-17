@@ -2,23 +2,16 @@
 
 @theme {
   /* ── Colour Palette ────────────────────────────────── */
+  /* ── Brand Kit Palette ────────────────────────────── */
+  --color-teal: #214C46;       /* Primary Dark */
+  --color-teal-mid: #4F7F77;   /* Primary Mid */
+  --color-teal-light: #A7CBBE; /* Primary Light */
   --color-sage: #7BA89A;
-  --color-sage-light: #9DBFB3;
-  --color-sage-dark: #5C8A7B;
+  --color-foam: #E8F1EC;       /* Brand Kit Foam */
+  --color-fog: #F5F8F6;        /* Brand Kit Background */
   --color-mist: #B8D4C0;
-  --color-foam: #E8F2EE;
-  --color-dusk: #7F96B8;
   --color-paper: #F5F3EF;
   --color-paper-dark: #EAE7E1;
-  --color-teal: #3D5A54;
-  --color-teal-light: #4E7268;
-  --color-amber-soft: #E8D4B0;
-  --color-amber-warm: #FEF4E0;
-  --color-amber-text: #A0700A;
-  --color-haze: #C4D4E8;
-  --color-rose-soft: #FDEAEA;
-  --color-rose-text: #B03030;
-  --color-rose-border: #F5B8B8;
 
   /* ── WCAG High Contrast Tokens ─────────────────────── */
   --color-sage-text: #3E5C52;  /* 7.4:1 contrast */
@@ -68,13 +61,47 @@ body {
 
 /* ── Scroll Snap Container ──────────────────────────────── */
 .snap-container {
-  scroll-snap-type: y proximity;
   scroll-behavior: smooth;
+  overflow-y: auto;
+  height: 100vh;
+  overscroll-behavior-y: auto;
+  -webkit-overflow-scrolling: touch;
+  scroll-snap-type: y proximity;
+}
+
+@media (hover: none) {
+  .snap-container {
+    overscroll-behavior-y: contain;
+  }
 }
 
 .snap-section {
-  scroll-snap-align: start;
   min-height: 100vh;
+  scroll-snap-align: start;
+  scroll-snap-stop: always;
+  display: flex;
+  align-items: center;
+  will-change: transform;
+}
+
+/* Disable snap on smaller screens for smooth mobile scroll */
+@media (max-width: 1023px) {
+  .snap-container {
+    scroll-snap-type: none;
+    height: 100vh;
+  }
+  
+  .snap-section {
+    min-height: 100vh;
+    scroll-snap-align: none;
+  }
+}
+
+/* Optimize 3D transforms */
+.snap-section * {
+  transform: translateZ(0);
+  backface-visibility: hidden;
+  perspective: 1000px;
 }
 
 /* Footer is NOT a snap section - it flows naturally */

@@ -1,6 +1,6 @@
 "use client";
 
-import { cn } from "@/lib/cn";
+import { cn } from "@/utils/cn";
 import { motion, useMotionValue, useSpring, useTransform } from "framer-motion";
 import { type HTMLAttributes, useRef, useState } from "react";
 
@@ -130,3 +130,4 @@ export default function Card({
     </div>
   );
 }
+

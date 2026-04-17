@@ -3,10 +3,11 @@
 import { useState, useEffect } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { cn } from "@/lib/cn";
-import { STUDENT_NAV } from "@/lib/constants";
-import { useAuthStore } from "@/lib/auth-store";
-import { studentApi } from "@/lib/api";
+import { cn } from "@/utils/cn";
+import Logo from "@/components/brand/Logo";
+import { STUDENT_NAV } from "@/utils/constants";
+import { useAuthStore } from "@/hooks/auth-store";
+import { studentApi } from "@/services/api";
 
 const ICONS: Record<string, string> = {
   Home: "⌂",
@@ -61,9 +62,8 @@ export default function StudentLayout({ children }: { children: React.ReactNode 
             "lg:relative lg:translate-x-0"
           )}
         >
-          {/* Logo */}
           <div className="px-6 py-6 border-b border-[#E8F2EE]">
-            <img src="/logo.png" alt="StillMind Logo" className="h-12 w-auto mix-blend-multiply" />
+            <Logo iconSize="md" />
           </div>
 
           {/* Nav */}
