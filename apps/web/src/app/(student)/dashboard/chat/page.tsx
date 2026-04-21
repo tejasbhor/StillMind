@@ -72,7 +72,7 @@ export default function StudentChatPage() {
 
   const { connected, sendMessage } = useSocket({
     conversationId: activeConversationId ?? undefined,
-    onMessage: handleIncomingMessage,
+    onMessage: (msg) => handleIncomingMessage(msg as unknown as ChatMessageItem),
   });
 
   // Auto-scroll on new messages
