@@ -13,8 +13,8 @@ git pull origin main
 
 # 2. Sync environment variables (ensures .env has what it needs)
 if [ ! -f .env ]; then
-    echo "⚠️ .env not found. Copying from production example..."
-    cp .env.production.example .env
+    echo "⚠️ .env not found. Copying from example..."
+    cp .env.example .env
 fi
 
 # 3. Stop services (prevents memory collisions during build)
