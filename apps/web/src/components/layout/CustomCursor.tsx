@@ -1,12 +1,16 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { useReducedMotion } from "framer-motion";
 
 export default function CustomCursor() {
+  const prefersReducedMotion = useReducedMotion();
   const [pos, setPos] = useState({ x: 0, y: 0 });
   const [hover, setHover] = useState(false);
 
   useEffect(() => {
+    if (prefersReducedMotion) return;
+
     const move = (e: MouseEvent) => setPos({ x: e.clientX, y: e.clientY });
     document.addEventListener("mousemove", move, { passive: true });
 
@@ -31,7 +35,9 @@ export default function CustomCursor() {
       document.removeEventListener("mousemove", move);
       document.removeEventListener("mouseover", handleMouseOver);
     };
-  }, []);
+  }, [prefersReducedMotion]);
+
+  if (prefersReducedMotion) return null;
 
   return (
     <div

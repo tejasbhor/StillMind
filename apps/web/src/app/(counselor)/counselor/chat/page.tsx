@@ -25,7 +25,7 @@ function formatDate(iso: string) {
 
 export default function CounselorChatPage() {
   const [conversations, setConversations] = useState<ChatConversation[]>([]);
-  const [activeAllocationId, setActiveAllocationId] = useState<string | null>(null);
+  const [activeConversationId, setActiveConversationId] = useState<string | null>(null);
   const [messages, setMessages] = useState<ChatMessageItem[]>([]);
   const [inputValue, setInputValue] = useState("");
   const [loading, setLoading] = useState(true);
@@ -39,29 +39,29 @@ export default function CounselorChatPage() {
     (async () => {
       try {
         const res = await chatApi.getConversations();
-        const convos = (res as any).data as ChatConversation[];
+        const convos = res.data as ChatConversation[];
         setConversations(convos);
-        if (convos.length > 0) setActiveAllocationId(convos[0].allocation_id);
+        if (convos.length > 0) setActiveConversationId(convos[0].conversation_id);
       } catch {} finally { setLoading(false); }
     })();
   }, []);
 
   useEffect(() => {
-    if (!activeAllocationId) return;
+    if (!activeConversationId) return;
     (async () => {
       try {
-        const res = await chatApi.getHistory(activeAllocationId);
-        setMessages((res as any).data as ChatMessageItem[]);
+        const res = await chatApi.getHistory(activeConversationId);
+        setMessages(res.data as ChatMessageItem[]);
       } catch {}
     })();
-  }, [activeAllocationId]);
+  }, [activeConversationId]);
 
   const handleIncoming = useCallback((msg: ChatMessageItem) => {
     setMessages((prev) => prev.some((m) => m.id === msg.id) ? prev : [...prev, msg]);
   }, []);
 
   const { connected, sendMessage, joinRoom } = useSocket({
-    allocationId: activeAllocationId ?? undefined,
+    conversationId: activeConversationId ?? undefined,
     onMessage: handleIncoming,
   });
 
@@ -70,17 +70,17 @@ export default function CounselorChatPage() {
   }, [messages]);
 
   const handleSend = () => {
-    if (!inputValue.trim() || !activeAllocationId) return;
+    if (!inputValue.trim() || !activeConversationId) return;
     sendMessage(inputValue.trim());
     setInputValue("");
   };
 
-  const handleSelectConvo = (allocationId: string) => {
-    setActiveAllocationId(allocationId);
-    joinRoom(allocationId);
+  const handleSelectConvo = (conversationId: string) => {
+    setActiveConversationId(conversationId);
+    joinRoom(conversationId);
   };
 
-  const activeConvo = conversations.find((c) => c.allocation_id === activeAllocationId);
+  const activeConvo = conversations.find((c) => c.conversation_id === activeConversationId);
   const studentName = activeConvo?.other_party_name || "Student";
   const initials = studentName.split(" ").map((n) => n[0]).join("").toUpperCase().slice(0, 2);
 
@@ -120,8 +120,8 @@ export default function CounselorChatPage() {
           {conversations.map((c) => {
             const cInitials = (c.other_party_name || "S").split(" ").map((n) => n[0]).join("").toUpperCase().slice(0, 2);
             return (
-              <button key={c.allocation_id} onClick={() => handleSelectConvo(c.allocation_id)}
-                className={cn("w-full p-4 flex gap-4 transition-all hover:bg-[#E8F2EE]/50", activeAllocationId === c.allocation_id ? "bg-white border-r-2 border-r-[#7BA89A]" : "")}>
+              <button key={c.conversation_id} onClick={() => handleSelectConvo(c.conversation_id)}
+                className={cn("w-full p-4 flex gap-4 transition-all hover:bg-[#E8F2EE]/50", activeConversationId === c.conversation_id ? "bg-white border-r-2 border-r-[#7BA89A]" : "")}>
                 <div className="w-12 h-12 rounded-full bg-[#B8D4C0] flex items-center justify-center font-serif text-[#3D5A54] font-medium">{cInitials}</div>
                 <div className="flex-1 text-left min-w-0">
                   <div className="flex justify-between items-center mb-1">

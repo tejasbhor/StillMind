@@ -57,8 +57,8 @@ export default function MobileNav({ isOpen, onToggle }: MobileNavProps) {
             </div>
             
             {currentNavItems.map((item, i) => {
-              const isLocal = item.href.startsWith("#");
-              const finalHref = isLocal && pathname !== "/" ? `/${item.href}` : item.href;
+              const isFallback = !NAV_CONFIG[pathname];
+              const finalHref = item.href.startsWith("#") && isFallback ? `/${item.href}` : item.href;
               
               return (
                 <Link

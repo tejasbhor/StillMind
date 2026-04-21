@@ -1,21 +1,24 @@
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select, func, and_, or_
-from typing import Optional
+from sqlalchemy import select, func, and_, or_, desc, extract
+from typing import Optional, Tuple
+import secrets
 import uuid
 
-from pydantic import BaseModel
+from pydantic import BaseModel, Field, AliasChoices
 
 from app.core.database import get_db
 from app.core.dependencies import require_admin
 from app.core.responses import success_response, error_response
 from app.core.security import hash_password
 from app.models.user import User
+from app.models.organization import Organization
 from app.models.student_profile import StudentProfile
 from app.models.counselor_profile import CounselorProfile
 from app.models.allocation import Allocation
 from app.models.risk_log import RiskLog
 from app.models.audit_log import AuditLog
+from app.models.session import Session
 from app.models.notification import Notification
 from app.models.admin_config import AdminConfig, DEFAULT_CONFIGS
 from app.services.audit_service import audit
@@ -29,12 +32,18 @@ router = APIRouter(prefix="/admin", tags=["Admin Management"])
 class CreateCounselorRequest(BaseModel):
     email: str
     full_name: str
-    password: str
-    max_active_cases: int = 10
+    password: Optional[str] = None
+    max_active_cases: int = Field(
+        default=10,
+        validation_alias=AliasChoices("max_active_cases", "max_slots_day"),
+    )
 
 
 class UpdateCounselorCapacityRequest(BaseModel):
-    max_active_cases: int
+    max_active_cases: int = Field(
+        ...,
+        validation_alias=AliasChoices("max_active_cases", "max_slots_day"),
+    )
 
 
 class ReassignCounselorRequest(BaseModel):
@@ -59,7 +68,45 @@ class AllocationWeightsUpdate(BaseModel):
     weights: dict
 
 
+class OrganizationUpdate(BaseModel):
+    name: Optional[str] = None
+    contact_email: Optional[str] = None
+    settings: Optional[dict] = None
+
+
 # ─── Helper Functions ────────────────────────────────────────────────────────
+
+
+def _admin_org_id(user) -> str:
+    oid = getattr(user, "organization_id", None)
+    if not oid:
+        raise HTTPException(status_code=400, detail="Admin is not linked to an organization")
+    return oid
+
+
+async def _get_counselor_for_org(
+    db: AsyncSession, org_id: str, counselor_id: str
+) -> Optional[CounselorProfile]:
+    row = await db.execute(
+        select(CounselorProfile)
+        .join(User, CounselorProfile.user_id == User.id)
+        .where(
+            CounselorProfile.id == counselor_id,
+            User.organization_id == org_id,
+        )
+    )
+    return row.scalar_one_or_none()
+
+
+async def _get_student_for_org(
+    db: AsyncSession, org_id: str, student_id: str
+) -> Optional[Tuple[StudentProfile, str]]:
+    row = await db.execute(
+        select(StudentProfile, User.email)
+        .join(User, StudentProfile.user_id == User.id)
+        .where(StudentProfile.id == student_id, User.organization_id == org_id)
+    )
+    return row.first()
 
 
 async def _ensure_default_configs(db: AsyncSession):
@@ -89,42 +136,33 @@ async def _get_config(db: AsyncSession, key: str) -> dict:
     return DEFAULT_CONFIGS.get(key, {})
 
 
-async def _calculate_average_wait_time(db: AsyncSession) -> float:
-    """Calculate average wait time in days from PENDING_RANKING to ASSIGNED."""
-    result = await db.execute("""
-        SELECT AVG(EXTRACT(EPOCH FROM (allocation_updated_at - created_at)) / 86400)
-        FROM allocations 
-        WHERE status IN ('ASSIGNED', 'CONFIRMED') 
-        AND allocation_updated_at IS NOT NULL
-    """)
-    avg_days = result.scalar()
-    return round(avg_days, 1) if avg_days else 0.0
-
-
-# ─── Counselor Management ─────���──────────────────────────────────────────
+# ─── Counselor Management ───────────────────────────────────────────────────
 
 
 @router.get("/counselors", summary="List all counselors")
 async def list_counselors(
     user=Depends(require_admin),
     db: AsyncSession = Depends(get_db),
-    skip: int = Query(0, ge=0),
+    offset: int = Query(0, ge=0),
     limit: int = Query(20, ge=1, le=100),
     is_active: Optional[bool] = None,
     search: Optional[str] = None,
 ):
     """List counselors with aggregated stats (no clinical data)."""
     await _ensure_default_configs(db)
+    org_id = _admin_org_id(user)
 
-    stmt = select(CounselorProfile, User.email).join(
-        User, CounselorProfile.user_id == User.id
+    stmt = (
+        select(CounselorProfile, User.email)
+        .join(User, CounselorProfile.user_id == User.id)
+        .where(User.organization_id == org_id)
     )
     if is_active is not None:
         stmt = stmt.where(CounselorProfile.is_active == is_active)
     if search:
         stmt = stmt.where(CounselorProfile.full_name.ilike(f"%{search}%"))
 
-    stmt = stmt.offset(skip).limit(limit)
+    stmt = stmt.offset(offset).limit(limit)
     result = await db.execute(stmt)
     rows = result.all()
 
@@ -134,7 +172,7 @@ async def list_counselors(
             select(func.count(Allocation.id)).where(
                 and_(
                     Allocation.counselor_id == profile.id,
-                    Allocation.status.in_(["ASSIGNED", "CONFIRMED", "IN_PROGRESS"]),
+                    Allocation.status.in_(["ASSIGNED", "CONFIRMED"]),
                 )
             )
         )
@@ -143,11 +181,14 @@ async def list_counselors(
         counselors.append(
             {
                 "id": profile.id,
+                "counselor_id": profile.id,
                 "user_id": profile.user_id,
                 "email": email,
                 "full_name": profile.full_name,
                 "is_active": profile.is_active,
                 "max_active_cases": profile.max_active_cases,
+                "max_slots_day": profile.max_slots_day,
+                "assigned_students": active_cases,
                 "current_active_cases": active_cases,
                 "available_slots": max(0, profile.max_active_cases - active_cases),
                 "created_at": profile.created_at.isoformat()
@@ -159,6 +200,42 @@ async def list_counselors(
     return success_response(data=counselors)
 
 
+@router.get("/counselors/{counselor_id}", summary="Get one counselor")
+async def get_counselor(
+    counselor_id: str,
+    user=Depends(require_admin),
+    db: AsyncSession = Depends(get_db),
+):
+    profile = await _get_counselor_for_org(db, _admin_org_id(user), counselor_id)
+    if not profile:
+        raise HTTPException(status_code=404, detail="Counselor not found")
+    email_row = await db.execute(select(User.email).where(User.id == profile.user_id))
+    email = email_row.scalar_one()
+    active_result = await db.execute(
+        select(func.count(Allocation.id)).where(
+            and_(
+                Allocation.counselor_id == profile.id,
+                Allocation.status.in_(["ASSIGNED", "CONFIRMED"]),
+            )
+        )
+    )
+    active_cases = active_result.scalar() or 0
+    return success_response(
+        data={
+            "id": profile.id,
+            "counselor_id": profile.id,
+            "user_id": profile.user_id,
+            "email": email,
+            "full_name": profile.full_name,
+            "is_active": profile.is_active,
+            "max_active_cases": profile.max_active_cases,
+            "max_slots_day": profile.max_slots_day,
+            "assigned_students": active_cases,
+            "current_active_cases": active_cases,
+        }
+    )
+
+
 @router.post("/counselors", summary="Create counselor account")
 async def create_counselor(
     req: CreateCounselorRequest,
@@ -166,6 +243,7 @@ async def create_counselor(
     db: AsyncSession = Depends(get_db),
 ):
     """Create a new counselor user and profile with edge case handling."""
+    org_id = _admin_org_id(user)
     email = req.email.lower().strip()
 
     # Check duplicate email (case-insensitive)
@@ -181,20 +259,23 @@ async def create_counselor(
             status_code=400, detail="max_active_cases must be between 1 and 50"
         )
 
+    plain_password = req.password or secrets.token_urlsafe(14)
     user_id = str(uuid.uuid4())
     profile_id = str(uuid.uuid4())
 
     new_user = User(
         id=user_id,
+        organization_id=org_id,
         role="counselor",
-        email=req.email,
-        password_hash=hash_password(req.password),
+        email=email,
+        password_hash=hash_password(plain_password),
         status="ACTIVE",
     )
     profile = CounselorProfile(
         id=profile_id,
         user_id=user_id,
         full_name=req.full_name,
+        max_slots_day=req.max_active_cases,
         max_active_cases=req.max_active_cases,
         is_active=True,
     )
@@ -208,7 +289,7 @@ async def create_counselor(
         actor_id=user.id,
         actor_role="admin",
         metadata={
-            "counselor_email": req.email,
+            "counselor_email": email,
             "max_active_cases": req.max_active_cases,
         },
         resource_id=profile_id,
@@ -220,8 +301,10 @@ async def create_counselor(
         data={
             "user_id": user_id,
             "profile_id": profile_id,
-            "email": req.email,
+            "counselor_id": profile_id,
+            "email": email,
             "role": "counselor",
+            "temporary_password": plain_password if not req.password else None,
         },
         message="Counselor created successfully",
     )
@@ -237,10 +320,8 @@ async def update_counselor_status(
     db: AsyncSession = Depends(get_db),
 ):
     """Enable or disable a counselor account with edge case handling."""
-    result = await db.execute(
-        select(CounselorProfile).where(CounselorProfile.id == counselor_id)
-    )
-    profile = result.scalar_one_or_none()
+    org_id = _admin_org_id(user)
+    profile = await _get_counselor_for_org(db, org_id, counselor_id)
     if not profile:
         raise HTTPException(status_code=404, detail="Counselor not found")
 
@@ -250,7 +331,7 @@ async def update_counselor_status(
             select(func.count(Allocation.id)).where(
                 and_(
                     Allocation.counselor_id == counselor_id,
-                    Allocation.status.in_(["ASSIGNED", "CONFIRMED", "IN_PROGRESS"]),
+                    Allocation.status.in_(["ASSIGNED", "CONFIRMED"]),
                 )
             )
         )
@@ -289,10 +370,8 @@ async def update_counselor_capacity(
     db: AsyncSession = Depends(get_db),
 ):
     """Update counselor max active cases with edge case handling."""
-    result = await db.execute(
-        select(CounselorProfile).where(CounselorProfile.id == counselor_id)
-    )
-    profile = result.scalar_one_or_none()
+    org_id = _admin_org_id(user)
+    profile = await _get_counselor_for_org(db, org_id, counselor_id)
     if not profile:
         raise HTTPException(status_code=404, detail="Counselor not found")
 
@@ -320,6 +399,7 @@ async def update_counselor_capacity(
 
     old_capacity = profile.max_active_cases
     profile.max_active_cases = req.max_active_cases
+    profile.max_slots_day = req.max_active_cases
     await db.commit()
 
     await audit.log(
@@ -347,11 +427,8 @@ async def delete_counselor(
     db: AsyncSession = Depends(get_db),
 ):
     """Delete a counselor with complete edge case handling."""
-    # Get counselor profile
-    result = await db.execute(
-        select(CounselorProfile).where(CounselorProfile.id == counselor_id)
-    )
-    profile = result.scalar_one_or_none()
+    org_id = _admin_org_id(user)
+    profile = await _get_counselor_for_org(db, org_id, counselor_id)
     if not profile:
         raise HTTPException(status_code=404, detail="Counselor not found")
 
@@ -436,19 +513,12 @@ async def reassign_counselor_students(
     db: AsyncSession = Depends(get_db),
 ):
     """Reassign all students from one counselor to another."""
-    # Validate source counselor
-    from_result = await db.execute(
-        select(CounselorProfile).where(CounselorProfile.id == req.from_counselor_id)
-    )
-    from_profile = from_result.scalar_one_or_none()
+    org_id = _admin_org_id(user)
+    from_profile = await _get_counselor_for_org(db, org_id, req.from_counselor_id)
     if not from_profile:
         raise HTTPException(status_code=404, detail="Source counselor not found")
 
-    # Validate target counselor
-    to_result = await db.execute(
-        select(CounselorProfile).where(CounselorProfile.id == req.to_counselor_id)
-    )
-    to_profile = to_result.scalar_one_or_none()
+    to_profile = await _get_counselor_for_org(db, org_id, req.to_counselor_id)
     if not to_profile:
         raise HTTPException(status_code=404, detail="Target counselor not found")
 
@@ -526,34 +596,83 @@ async def reassign_counselor_students(
 async def list_students(
     user=Depends(require_admin),
     db: AsyncSession = Depends(get_db),
-    skip: int = Query(0, ge=0),
+    offset: int = Query(0, ge=0),
     limit: int = Query(20, ge=1, le=100),
     risk_level: Optional[str] = None,
     status: Optional[str] = None,
     search: Optional[str] = None,
 ):
     """List students with risk summaries - PRD §9.3: Admin sees aggregated data only."""
-    # Subquery for latest risk level
-    risk_subq = (
-        select(
-            RiskLog.student_id,
-            RiskLog.risk_level,
-            RiskLog.cri_score,
-            RiskLog.created_at,
+    org_id = _admin_org_id(user)
+
+    rn_risk = func.row_number().over(
+        partition_by=RiskLog.student_id,
+        order_by=RiskLog.created_at.desc(),
+    ).label("rn_risk")
+
+    risk_ranked = (
+        select(RiskLog.student_id, RiskLog.risk_level, RiskLog.cri_score, rn_risk).where(
+            RiskLog.student_id.in_(
+                select(StudentProfile.id)
+                .join(User, StudentProfile.user_id == User.id)
+                .where(User.organization_id == org_id)
+            )
         )
-        .distinct(RiskLog.student_id)
-        .order_by(RiskLog.student_id, RiskLog.created_at.desc())
-        .subquery()
-    )
+    ).subquery()
+
+    risk_sq = (
+        select(
+            risk_ranked.c.student_id,
+            risk_ranked.c.risk_level,
+            risk_ranked.c.cri_score,
+        ).where(risk_ranked.c.rn_risk == 1)
+    ).subquery()
+
+    rn_alloc = func.row_number().over(
+        partition_by=Allocation.student_id,
+        order_by=Allocation.created_at.desc(),
+    ).label("rn_alloc")
+
+    alloc_ranked = (
+        select(
+            Allocation.student_id,
+            CounselorProfile.full_name.label("counselor_name"),
+            rn_alloc,
+        )
+        .join(CounselorProfile, Allocation.counselor_id == CounselorProfile.id)
+        .where(
+            Allocation.counselor_id.isnot(None),
+            Allocation.status.in_(["ASSIGNED", "CONFIRMED", "IN_PROGRESS"]),
+            Allocation.student_id.in_(
+                select(StudentProfile.id)
+                .join(User, StudentProfile.user_id == User.id)
+                .where(User.organization_id == org_id)
+            ),
+        )
+    ).subquery()
+
+    counselor_sq = (
+        select(alloc_ranked.c.student_id, alloc_ranked.c.counselor_name).where(
+            alloc_ranked.c.rn_alloc == 1
+        )
+    ).subquery()
 
     stmt = (
-        select(StudentProfile, User.email)
+        select(
+            StudentProfile,
+            User.email,
+            risk_sq.c.risk_level,
+            risk_sq.c.cri_score,
+            counselor_sq.c.counselor_name,
+        )
         .join(User, StudentProfile.user_id == User.id)
-        .outerjoin(risk_subq, StudentProfile.id == risk_subq.c.student_id)
+        .outerjoin(risk_sq, StudentProfile.id == risk_sq.c.student_id)
+        .outerjoin(counselor_sq, StudentProfile.id == counselor_sq.c.student_id)
+        .where(User.organization_id == org_id)
     )
 
     if risk_level:
-        stmt = stmt.where(risk_subq.c.risk_level == risk_level)
+        stmt = stmt.where(risk_sq.c.risk_level == risk_level)
     if status:
         stmt = stmt.where(StudentProfile.profile_status == status)
     if search:
@@ -564,12 +683,12 @@ async def list_students(
             )
         )
 
-    stmt = stmt.offset(skip).limit(limit)
+    stmt = stmt.order_by(desc(StudentProfile.updated_at)).offset(offset).limit(limit)
     result = await db.execute(stmt)
     rows = result.all()
 
     students = []
-    for profile, email in rows:
+    for profile, email, r_level, cri, counselor_name in rows:
         sessions_result = await db.execute(
             select(func.count(Allocation.id)).where(
                 and_(
@@ -580,22 +699,26 @@ async def list_students(
         )
         sessions_count = sessions_result.scalar() or 0
 
+        last_ts = profile.updated_at or profile.created_at
+        last_activity = (
+            last_ts.isoformat() if hasattr(last_ts, "isoformat") else str(last_ts)
+        )
+
         students.append(
             {
                 "id": profile.id,
+                "student_id": profile.id,
                 "user_id": profile.user_id,
                 "email": email,
                 "full_name": profile.full_name,
                 "college_id": profile.college_id,
                 "profile_status": profile.profile_status,
                 "consent_flag": profile.consent_flag,
-                "risk_level": risk_subq.c.risk_level
-                if risk_subq.c.risk_level
-                else "UNKNOWN",
-                "cri_score": float(risk_subq.c.cri_score)
-                if risk_subq.c.cri_score
-                else None,
+                "risk_level": r_level or "UNKNOWN",
+                "cri_score": float(cri) if cri is not None else None,
                 "completed_sessions": sessions_count,
+                "last_activity": last_activity,
+                "assigned_counselor": counselor_name,
                 "created_at": profile.created_at.isoformat()
                 if hasattr(profile.created_at, "isoformat")
                 else str(profile.created_at),
@@ -612,12 +735,7 @@ async def get_student_details(
     db: AsyncSession = Depends(get_db),
 ):
     """Get student details - PRD §9.3: No raw clinical data, only CRI scores."""
-    result = await db.execute(
-        select(StudentProfile, User.email)
-        .join(User, StudentProfile.user_id == User.id)
-        .where(StudentProfile.id == student_id)
-    )
-    row = result.first()
+    row = await _get_student_for_org(db, _admin_org_id(user), student_id)
     if not row:
         raise HTTPException(status_code=404, detail="Student not found")
 
@@ -634,6 +752,7 @@ async def get_student_details(
     return success_response(
         data={
             "id": profile.id,
+            "student_id": profile.id,
             "email": email,
             "full_name": profile.full_name,
             "college_id": profile.college_id,
@@ -665,20 +784,46 @@ async def system_health(
 ):
     """Check database connectivity and basic system stats."""
     try:
-        result = await db.execute(select(func.count(User.id)))
-        user_count = result.scalar()
+        org_id = _admin_org_id(user)
 
-        student_count = await db.execute(select(func.count(StudentProfile.id)))
-        counselor_count = await db.execute(select(func.count(CounselorProfile.id)))
-        allocation_count = await db.execute(select(func.count(Allocation.id)))
+        user_count = (
+            await db.execute(
+                select(func.count(User.id)).where(User.organization_id == org_id)
+            )
+        ).scalar()
 
-        # Calculate average wait time
-        avg_wait_result = await db.execute("""
-            SELECT AVG(EXTRACT(EPOCH FROM (COALESCE(allocation_updated_at, now()) - created_at)) / 86400)
-            FROM allocations 
-            WHERE status IN ('ASSIGNED', 'CONFIRMED')
-        """)
-        avg_wait = avg_wait_result.scalar() or 0
+        student_count = await db.execute(
+            select(func.count(StudentProfile.id))
+            .join(User, StudentProfile.user_id == User.id)
+            .where(User.organization_id == org_id)
+        )
+        counselor_count = await db.execute(
+            select(func.count(CounselorProfile.id))
+            .join(User, CounselorProfile.user_id == User.id)
+            .where(User.organization_id == org_id)
+        )
+        sp_in_org = (
+            select(StudentProfile.id)
+            .join(User, StudentProfile.user_id == User.id)
+            .where(User.organization_id == org_id)
+        )
+        allocation_count = await db.execute(
+            select(func.count(Allocation.id)).where(Allocation.student_id.in_(sp_in_org))
+        )
+
+        avg_wait_stmt = select(
+            func.avg(
+                extract("epoch", func.coalesce(Allocation.slot_time, func.now()) - Allocation.created_at)
+                / 86400.0
+            )
+        ).where(
+            and_(
+                Allocation.status.in_(["ASSIGNED", "CONFIRMED"]),
+                Allocation.student_id.in_(sp_in_org),
+            )
+        )
+        avg_wait_res = await db.execute(avg_wait_stmt)
+        avg_wait = avg_wait_res.scalar() or 0
 
         return success_response(
             data={
@@ -691,7 +836,7 @@ async def system_health(
                     "allocations": allocation_count.scalar(),
                 },
                 "metrics": {
-                    "average_wait_time_days": round(avg_wait, 1) if avg_wait else 0.0,
+                    "average_wait_time_days": round(float(avg_wait), 1) if avg_wait else 0.0,
                 },
             }
         )
@@ -882,6 +1027,71 @@ async def update_allocation_weights(
     return success_response(message="Allocation weights updated", data=req.weights)
 
 
+# ─── Organization (single-tenant / licensed deployment) ────────────────────────
+
+
+@router.get("/organization", summary="Get organization for this deployment")
+async def get_organization(
+    user=Depends(require_admin),
+    db: AsyncSession = Depends(get_db),
+):
+    org_id = _admin_org_id(user)
+    res = await db.execute(select(Organization).where(Organization.id == org_id))
+    org = res.scalar_one_or_none()
+    if not org:
+        raise HTTPException(status_code=404, detail="Organization not found")
+    return success_response(
+        data={
+            "id": org.id,
+            "name": org.name,
+            "slug": org.slug,
+            "contact_email": org.contact_email,
+            "settings": org.settings or {},
+            "created_at": org.created_at.isoformat()
+            if hasattr(org.created_at, "isoformat")
+            else str(org.created_at),
+        }
+    )
+
+
+@router.patch("/organization", summary="Update organization profile")
+async def patch_organization(
+    req: OrganizationUpdate,
+    user=Depends(require_admin),
+    db: AsyncSession = Depends(get_db),
+):
+    org_id = _admin_org_id(user)
+    res = await db.execute(select(Organization).where(Organization.id == org_id))
+    org = res.scalar_one_or_none()
+    if not org:
+        raise HTTPException(status_code=404, detail="Organization not found")
+    if req.name is not None:
+        org.name = req.name.strip()
+    if req.contact_email is not None:
+        org.contact_email = req.contact_email.strip() or None
+    if req.settings is not None:
+        org.settings = req.settings
+    await audit.log(
+        db,
+        action="ORGANIZATION_UPDATED",
+        actor_id=user.id,
+        actor_role="admin",
+        metadata={"organization_id": org_id},
+        resource_id=org_id,
+    )
+    await db.commit()
+    return success_response(
+        message="Organization updated",
+        data={
+            "id": org.id,
+            "name": org.name,
+            "slug": org.slug,
+            "contact_email": org.contact_email,
+            "settings": org.settings or {},
+        },
+    )
+
+
 # ─── Analytics ─────────────────────────────────────────────────────────────────────────────────
 
 
@@ -891,16 +1101,30 @@ async def get_risk_distribution(
     db: AsyncSession = Depends(get_db),
 ):
     """Get risk distribution as percentages only - PRD §9.3"""
-    subquery = (
-        select(RiskLog.student_id, RiskLog.risk_level)
-        .distinct(RiskLog.student_id)
-        .order_by(RiskLog.student_id, RiskLog.created_at.desc())
-        .subquery()
+    org_id = _admin_org_id(user)
+
+    rn = func.row_number().over(
+        partition_by=RiskLog.student_id,
+        order_by=RiskLog.created_at.desc(),
+    ).label("rn")
+
+    risk_ranked = (
+        select(RiskLog.student_id, RiskLog.risk_level, rn).where(
+            RiskLog.student_id.in_(
+                select(StudentProfile.id)
+                .join(User, StudentProfile.user_id == User.id)
+                .where(User.organization_id == org_id)
+            )
+        )
+    ).subquery()
+
+    stmt = (
+        select(risk_ranked.c.risk_level, func.count())
+        .where(risk_ranked.c.rn == 1)
+        .group_by(risk_ranked.c.risk_level)
     )
 
-    result = await db.execute(
-        select(subquery.c.risk_level, func.count()).group_by(subquery.c.risk_level)
-    )
+    result = await db.execute(stmt)
 
     distribution = {"GREEN": 0, "YELLOW": 0, "RED": 0}
     total = 0
@@ -930,36 +1154,62 @@ async def get_resource_utilization(
     db: AsyncSession = Depends(get_db),
 ):
     """Get slot utilization, wait time, backlog - PRD §9.3"""
+    org_id = _admin_org_id(user)
+
     total_counselors = await db.execute(
-        select(func.count(CounselorProfile.id)).where(
-            CounselorProfile.is_active == True
+        select(func.count(CounselorProfile.id))
+        .join(User, CounselorProfile.user_id == User.id)
+        .where(
+            CounselorProfile.is_active == True,
+            User.organization_id == org_id,
         )
     )
     counselor_count = total_counselors.scalar() or 0
 
+    await _ensure_default_configs(db)
     config = await _get_config(db, "resource_policies")
     daily_slots = config.get("daily_counseling_slots", 60)
     total_slots = counselor_count * daily_slots
 
+    sp_in_org = (
+        select(StudentProfile.id)
+        .join(User, StudentProfile.user_id == User.id)
+        .where(User.organization_id == org_id)
+    )
+
     used_result = await db.execute(
         select(func.count(Allocation.id)).where(
-            Allocation.status.in_(["CONFIRMED", "COMPLETED"])
+            and_(
+                Allocation.status.in_(["CONFIRMED", "COMPLETED"]),
+                Allocation.student_id.in_(sp_in_org),
+            )
         )
     )
     used_slots = used_result.scalar() or 0
 
     backlog_result = await db.execute(
-        select(func.count(Allocation.id)).where(Allocation.status == "PENDING_RANKING")
+        select(func.count(Allocation.id)).where(
+            and_(
+                Allocation.status == "PENDING_RANKING",
+                Allocation.student_id.in_(sp_in_org),
+            )
+        )
     )
     backlog = backlog_result.scalar() or 0
 
-    # Calculate average wait time
-    avg_wait_result = await db.execute("""
-        SELECT AVG(EXTRACT(EPOCH FROM (COALESCE(allocation_updated_at, now()) - created_at)) / 86400)
-        FROM allocations 
-        WHERE status IN ('ASSIGNED', 'CONFIRMED')
-    """)
-    avg_wait = avg_wait_result.scalar() or 0
+    avg_wait_stmt = select(
+        func.avg(
+            extract("epoch", func.coalesce(Allocation.slot_time, func.now()) - Allocation.created_at)
+            / 86400.0
+        )
+    ).where(
+        and_(
+            Allocation.status.in_(["ASSIGNED", "CONFIRMED"]),
+            Allocation.student_id.in_(sp_in_org),
+        )
+    )
+    avg_wait_res = await db.execute(avg_wait_stmt)
+    avg_wait = avg_wait_res.scalar()
 
     return success_response(
         data={
@@ -969,7 +1219,7 @@ async def get_resource_utilization(
             if total_slots > 0
             else 0,
             "backlog_unassigned_students": backlog,
-            "average_wait_time_days": round(avg_wait, 1) if avg_wait else 0.0,
+            "average_wait_time_days": round(float(avg_wait), 1) if avg_wait else 0.0,
             "active_counselors": counselor_count,
         }
     )
@@ -981,20 +1231,48 @@ async def get_engagement_metrics(
     db: AsyncSession = Depends(get_db),
 ):
     """Get assessment completion, no-show, drop-off rates - PRD §9.3"""
-    total_students = await db.execute(select(func.count(StudentProfile.id)))
+    org_id = _admin_org_id(user)
+
+    total_students = await db.execute(
+        select(func.count(StudentProfile.id))
+        .join(User, StudentProfile.user_id == User.id)
+        .where(User.organization_id == org_id)
+    )
     total = total_students.scalar() or 0
 
+    sp_in_org = (
+        select(StudentProfile.id)
+        .join(User, StudentProfile.user_id == User.id)
+        .where(User.organization_id == org_id)
+    )
+
     no_show_result = await db.execute(
-        select(func.count(Allocation.id)).where(Allocation.status == "MISSED")
+        select(func.count(Session.id))
+        .join(Allocation, Session.allocation_id == Allocation.id)
+        .where(
+            and_(
+                Session.status == "MISSED",
+                Allocation.student_id.in_(sp_in_org),
+            )
+        )
     )
     no_shows = no_show_result.scalar() or 0
 
     completed_result = await db.execute(
-        select(func.count(Allocation.id)).where(Allocation.status == "COMPLETED")
+        select(func.count(Allocation.id)).where(
+            and_(
+                Allocation.status == "COMPLETED",
+                Allocation.student_id.in_(sp_in_org),
+            )
+        )
     )
     completed = completed_result.scalar() or 0
 
-    assessment_result = await db.execute(select(func.count(RiskLog.id)))
+    assessment_result = await db.execute(
+        select(func.count(RiskLog.id)).where(
+            RiskLog.student_id.in_(sp_in_org),
+        )
+    )
     total_assessments = assessment_result.scalar() or 0
 
     return success_response(
@@ -1003,9 +1281,9 @@ async def get_engagement_metrics(
             "assessment_completion_rate": round(total_assessments / total * 100, 1)
             if total > 0
             else 0,
-            "no_show_rate": round(no_shows / total * 100, 1) if total > 0 else 0,
+            "no_show_rate": round(no_shows / max(total, 1) * 100, 1) if total > 0 else 0,
             "drop_off_rate": 0.0,
-            "completion_rate": round(completed / total * 100, 1) if total > 0 else 0,
+            "completion_rate": round(completed / max(total, 1) * 100, 1) if total > 0 else 0,
             "period_days": 30,
         }
     )
@@ -1020,14 +1298,33 @@ async def get_alerts(
     db: AsyncSession = Depends(get_db),
 ):
     """Get active alerts for counselor overload, RED cases - PRD §9.7"""
+    org_id = _admin_org_id(user)
     await _ensure_default_configs(db)
     alert_config = await _get_config(db, "alert_thresholds")
 
+    sp_in_org = (
+        select(StudentProfile.id)
+        .join(User, StudentProfile.user_id == User.id)
+        .where(User.organization_id == org_id)
+    )
+
     alerts = []
 
-    # RED case alert
+    rn = func.row_number().over(
+        partition_by=RiskLog.student_id,
+        order_by=RiskLog.created_at.desc(),
+    ).label("rn")
+
+    risk_ranked = (
+        select(RiskLog.student_id, RiskLog.risk_level, rn).where(
+            RiskLog.student_id.in_(sp_in_org)
+        )
+    ).subquery()
+
     red_count_result = await db.execute(
-        select(func.count(RiskLog.id)).where(RiskLog.risk_level == "RED")
+        select(func.count())
+        .select_from(risk_ranked)
+        .where(and_(risk_ranked.c.rn == 1, risk_ranked.c.risk_level == "RED"))
     )
     red_count = red_count_result.scalar() or 0
     red_threshold = alert_config.get("red_case_warning", 5)
@@ -1042,9 +1339,13 @@ async def get_alerts(
             }
         )
 
-    # Backlog alert
     backlog_result = await db.execute(
-        select(func.count(Allocation.id)).where(Allocation.status == "PENDING_RANKING")
+        select(func.count(Allocation.id)).where(
+            and_(
+                Allocation.status == "PENDING_RANKING",
+                Allocation.student_id.in_(sp_in_org),
+            )
+        )
     )
     backlog = backlog_result.scalar() or 0
     backlog_threshold = alert_config.get("backlog_warning", 10)
@@ -1059,12 +1360,15 @@ async def get_alerts(
             }
         )
 
-    # Counselor capacity alert
-    overloaded_result = await db.execute("""
-        SELECT COUNT(*) FROM counselor_profiles 
-        WHERE is_active = true 
-        AND current_active_cases >= max_active_cases
-    """)
+    overloaded_result = await db.execute(
+        select(func.count(CounselorProfile.id))
+        .join(User, CounselorProfile.user_id == User.id)
+        .where(
+            User.organization_id == org_id,
+            CounselorProfile.is_active == True,
+            CounselorProfile.current_active_cases >= CounselorProfile.max_active_cases,
+        )
+    )
     overloaded_counselors = overloaded_result.scalar() or 0
 
     if overloaded_counselors > 0:
@@ -1092,10 +1396,14 @@ async def get_allocations(
     db: AsyncSession = Depends(get_db),
 ):
     """Get which students got slots with abstracted reason - PRD §9.4"""
+    org_id = _admin_org_id(user)
+
     stmt = (
         select(Allocation, StudentProfile.full_name, CounselorProfile.full_name)
         .join(StudentProfile, Allocation.student_id == StudentProfile.id)
-        .join(CounselorProfile, Allocation.counselor_id == CounselorProfile.id)
+        .join(User, StudentProfile.user_id == User.id)
+        .outerjoin(CounselorProfile, Allocation.counselor_id == CounselorProfile.id)
+        .where(User.organization_id == org_id)
     )
 
     if status:
@@ -1111,7 +1419,7 @@ async def get_allocations(
             {
                 "allocation_id": alloc.id,
                 "student_name": student_name,
-                "counselor_name": counselor_name,
+                "counselor_name": counselor_name or "Unassigned",
                 "slot_time": alloc.slot_time.isoformat() if alloc.slot_time else None,
                 "status": alloc.status,
                 "priority_score": float(alloc.priority_score)

@@ -45,7 +45,7 @@ async def run_allocation_cycle(ctx):
             
             # Simple approach: fetch all unallocated students
             alloc_subq = select(Allocation.student_id).where(
-                Allocation.status.in_(["ASSIGNED", "CONFIRMED", "IN_PROGRESS", "PENDING_RANKING"])
+                Allocation.status.in_(["ASSIGNED", "CONFIRMED", "PENDING_RANKING"])
             ).subquery()
             
             r_result = await db.execute(

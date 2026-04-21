@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, Query
 from sqlalchemy.ext.asyncio import AsyncSession
 from typing import List
 
@@ -22,13 +22,11 @@ async def submit_assessment(
 
 @router.get("", response_model=dict, summary="List your past assessments")
 async def list_assessments(
+    limit: int = Query(50, le=100, ge=1),
+    offset: int = Query(0, ge=0),
     user=Depends(require_student),
     db: AsyncSession = Depends(get_db),
 ):
-    assessments = await _svc.list_assessments(db, user.id)
-    out = [AssessmentStudentView.model_validate(a).model_dump() for a in assessments]
-    # format dates correctly
-    for a in out:
-        if hasattr(a["created_at"], "isoformat"):
-            a["created_at"] = a["created_at"].isoformat()
-    return success_response(data=out)
+    assessments = await _svc.list_assessments(db, user.id, limit=limit, offset=offset)
+    data = [AssessmentStudentView.model_validate(a).model_dump() for a in assessments]
+    return success_response(data=data)

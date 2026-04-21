@@ -10,12 +10,13 @@ from sqlalchemy import select, and_, func
 
 from app.core.config import settings
 from app.core.database import AsyncSessionLocal
+from app.models.chat_conversation import ChatConversation, ChatConversationParticipant
 from app.models.chat_message import ChatMessage
-from app.models.allocation import Allocation
 from app.models.student_profile import StudentProfile
 from app.models.counselor_profile import CounselorProfile
 
 log = structlog.get_logger(__name__)
+MAX_MESSAGE_LENGTH = 5000
 
 # Simple in-memory rate limiter: user_id -> [(timestamp, message_count)]
 _rate_limiter: dict = defaultdict(list)
@@ -151,11 +152,8 @@ async def connect(sid, environ, auth):
         log.warning("socket_connect_auth_failed", sid=sid, error=str(exc))
         return False
 
-    # Resolve profile_id for room authorization
+    # Resolve profile_id for compatibility paths (not required for conversation auth).
     profile_id = await _get_user_id_and_profile_id(user_id, role)
-    if not profile_id:
-        log.warning("socket_connect_no_profile", sid=sid, user_id=user_id, role=role)
-        return False
 
     # Mark user as online on connect (store sid for presence)
     _user_presence[user_id] = {
@@ -246,7 +244,7 @@ async def mark_read(sid, data):
                 stmt = (
                     ChatMessage.__table__.update()
                     .where(ChatMessage.id == message_id)
-                    .where(ChatMessage.allocation_id == room_id)
+                    .where(ChatMessage.conversation_id == room_id)
                     .where(ChatMessage.sender_id != user_id)  # Not own messages
                     .values(
                         delivery_state="SEEN",
@@ -258,7 +256,7 @@ async def mark_read(sid, data):
                 # Mark all unread messages as seen
                 stmt = (
                     ChatMessage.__table__.update()
-                    .where(ChatMessage.allocation_id == room_id)
+                    .where(ChatMessage.conversation_id == room_id)
                     .where(ChatMessage.sender_id != user_id)
                     .where(ChatMessage.delivery_state != "SEEN")
                     .values(
@@ -299,8 +297,8 @@ async def edit_message(sid, data):
     if len(new_content.strip()) == 0:
         return {"error": "Content cannot be empty."}
 
-    if len(new_content) > 5000:
-        return {"error": "Message too long (max 3000 characters)."}
+    if len(new_content) > MAX_MESSAGE_LENGTH:
+        return {"error": f"Message too long (max {MAX_MESSAGE_LENGTH} characters)."}
 
     session_data = await sio.get_session(sid)
     sender_id = session_data.get("user_id")
@@ -408,31 +406,34 @@ async def delete_message(sid, data):
 
 @sio.event
 async def join_chat(sid, data):
-    """Join a chat room (allocation_id). Validates that the user is a participant."""
+    """Join a chat room (conversation_id). Validates that the user is a participant."""
     room_id = data.get("room")
     if not room_id:
         return {"error": "Missing 'room' field."}
 
     session_data = await sio.get_session(sid)
-    profile_id = session_data["profile_id"]
     role = session_data["role"]
+    user_id = session_data["user_id"]
 
     async with AsyncSessionLocal() as db:
-        result = await db.execute(select(Allocation).where(Allocation.id == room_id))
-        allocation = result.scalar_one_or_none()
+        result = await db.execute(
+            select(ChatConversation).where(ChatConversation.id == room_id)
+        )
+        conversation = result.scalar_one_or_none()
+        member_result = await db.execute(
+            select(ChatConversationParticipant.id).where(
+                ChatConversationParticipant.conversation_id == room_id,
+                ChatConversationParticipant.user_id == user_id,
+            )
+        )
+        is_member = member_result.scalar_one_or_none() is not None
 
-    if not allocation:
+    if not conversation:
         return {"error": "Room not found."}
-
-    # Verify membership: student_id/counselor_id are profile IDs
-    if role == "student" and allocation.student_id != profile_id:
+    if not is_member:
         return {"error": "Not authorized for this room."}
-    if role == "counselor" and allocation.counselor_id != profile_id:
-        return {"error": "Not authorized for this room."}
-
-    # Only allow chat for active allocations
-    if allocation.status not in ("ASSIGNED", "CONFIRMED"):
-        return {"error": "Allocation is not active. Chat unavailable."}
+    if conversation.status != "ACTIVE":
+        return {"error": "Conversation is archived. Chat unavailable."}
 
     await sio.enter_room(sid, room_id)
     log.info("socket_client_joined_room", sid=sid, room=room_id)
@@ -457,7 +458,7 @@ async def chat_message(sid, data):
     - Message deduplication
 
     data format: {
-        "room": "allocation_id",
+        "room": "conversation_id",
         "content": "text",
         "client_message_id": "optional client-generated UUID",
         "idempotency_key": "optional for retry handling"
@@ -474,8 +475,8 @@ async def chat_message(sid, data):
     if not isinstance(content, str) or len(content.strip()) == 0:
         return {"error": "Content must be a non-empty string."}
 
-    if len(content) > 5000:
-        return {"error": "Message too long (max 3000 characters)."}
+    if len(content) > MAX_MESSAGE_LENGTH:
+        return {"error": f"Message too long (max {MAX_MESSAGE_LENGTH} characters)."}
 
     # Sanitize content: strip and basic XSS prevention
     content = content.strip()
@@ -497,7 +498,6 @@ async def chat_message(sid, data):
 
     session_data = await sio.get_session(sid)
     sender_id = session_data["user_id"]  # From JWT — never from client payload
-    profile_id = session_data["profile_id"]
     role = session_data["role"]
 
     # Rate limiting check
@@ -549,26 +549,29 @@ async def chat_message(sid, data):
                         "duplicate": True,
                     }
 
-            # Verify allocation exists and is active
+            # Verify conversation exists and membership
             result = await db.execute(
-                select(Allocation).where(Allocation.id == room_id)
+                select(ChatConversation).where(ChatConversation.id == room_id)
             )
-            allocation = result.scalar_one_or_none()
-            if not allocation:
+            conversation = result.scalar_one_or_none()
+            if not conversation:
                 return {"error": "Unknown room."}
+            if conversation.status != "ACTIVE":
+                return {"error": "Conversation is archived. Cannot send messages."}
 
-            if allocation.status not in ("ASSIGNED", "CONFIRMED"):
-                return {"error": "Allocation is not active. Cannot send messages."}
-
-            # Verify membership
-            if role == "student" and allocation.student_id != profile_id:
-                return {"error": "Not authorized for this room."}
-            if role == "counselor" and allocation.counselor_id != profile_id:
+            member_result = await db.execute(
+                select(ChatConversationParticipant.id).where(
+                    ChatConversationParticipant.conversation_id == room_id,
+                    ChatConversationParticipant.user_id == sender_id,
+                )
+            )
+            if not member_result.scalar_one_or_none():
                 return {"error": "Not authorized for this room."}
 
             now = datetime.now(timezone.utc)
             msg = ChatMessage(
-                allocation_id=room_id,
+                conversation_id=room_id,
+                allocation_id=conversation.allocation_id,
                 sender_id=sender_id,
                 content=content,
                 client_message_id=client_message_id,

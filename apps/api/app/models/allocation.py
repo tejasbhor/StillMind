@@ -9,7 +9,9 @@ class Allocation(Base):
 
     id: Mapped[str] = mapped_column(String(36), primary_key=True, default=lambda: str(uuid.uuid4()))
     student_id: Mapped[str] = mapped_column(String(36), ForeignKey("student_profiles.id", ondelete="CASCADE"), nullable=False, index=True)
-    counselor_id: Mapped[str] = mapped_column(String(36), ForeignKey("counselor_profiles.id"), nullable=False, index=True)
+    counselor_id: Mapped[str | None] = mapped_column(
+        String(36), ForeignKey("counselor_profiles.id"), nullable=True, index=True
+    )
 
     priority_score: Mapped[float] = mapped_column(Numeric(5, 4), nullable=False)
     slot_time: Mapped[object] = mapped_column(TIMESTAMP(timezone=True), nullable=True)

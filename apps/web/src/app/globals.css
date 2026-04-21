@@ -62,23 +62,23 @@ body {
 /* ── Scroll Snap Container ──────────────────────────────── */
 .snap-container {
   scroll-behavior: smooth;
-  overflow-y: auto;
-  height: 100vh;
-  overscroll-behavior-y: auto;
-  -webkit-overflow-scrolling: touch;
-  scroll-snap-type: y proximity;
+  overflow: visible;
+  height: auto;
+  overscroll-behavior-y: none;
+  -webkit-overflow-scrolling: auto;
+  scroll-snap-type: none;
 }
 
 @media (hover: none) {
   .snap-container {
-    overscroll-behavior-y: contain;
+    overscroll-behavior-y: none;
   }
 }
 
 .snap-section {
   min-height: 100vh;
-  scroll-snap-align: start;
-  scroll-snap-stop: always;
+  scroll-snap-align: none;
+  scroll-snap-stop: normal;
   display: flex;
   align-items: center;
   will-change: transform;
@@ -88,7 +88,7 @@ body {
 @media (max-width: 1023px) {
   .snap-container {
     scroll-snap-type: none;
-    height: 100vh;
+    height: auto;
   }
   
   .snap-section {
@@ -129,6 +129,12 @@ text-4xl { font-size: 2.5rem; }
 *:focus-visible {
   outline: 2px solid #7BA89A;
   outline-offset: 2px;
+}
+
+/* Avoid native reveal button overlapping custom password controls */
+input::-ms-reveal,
+input::-ms-clear {
+  display: none;
 }
 
 /* ── Selection ─────────────────────────────────────────── */
@@ -512,11 +518,15 @@ text-4xl { font-size: 2.5rem; }
 .marquee-track {
   display: flex;
   width: max-content;
-  animation: marquee 30s linear infinite;
 }
 
 .marquee-track:hover {
-  animation-play-state: paused;
+  /* Motion is controlled by Framer Motion in the component. */
+}
+
+.mask-fade-x {
+  mask-image: linear-gradient(to right, transparent, black 8%, black 92%, transparent);
+  -webkit-mask-image: linear-gradient(to right, transparent, black 8%, black 92%, transparent);
 }
 
 /* ── Floating Particles ────────────────────────────────── */
@@ -932,6 +942,10 @@ text-4xl { font-size: 2.5rem; }
 
 /* Reduced motion preference */
 @media (prefers-reduced-motion: reduce) {
+  html {
+    scroll-behavior: auto !important;
+  }
+
   *, *::before, *::after {
     animation-duration: 0.01ms !important;
     animation-iteration-count: 1 !important;

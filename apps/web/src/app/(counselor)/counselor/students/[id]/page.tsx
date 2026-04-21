@@ -5,7 +5,7 @@ import Card from "@/components/ui/Card";
 import Button from "@/components/ui/Button";
 import RiskBadge from "@/components/shared/RiskBadge";
 import TrendIndicator from "@/components/shared/TrendIndicator";
-import Modal from "@/components/ui/Modal";
+import { Modal } from "@/components/ui/Dialog";
 import { cn } from "@/utils/cn";
 import { MOOD_LABELS, KEY_CONCERNS, KEY_CONCERN_LABELS } from "@/utils/constants";
 import type { MoodValue, TrendValue } from "@/utils/constants";

@@ -1,9 +1,10 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import Card from "@/components/ui/Card";
 import Button from "@/components/ui/Button";
 import { cn } from "@/utils/cn";
+import { adminApi } from "@/services/api";
 
 type Tab = "resource" | "thresholds" | "weights";
 
@@ -51,14 +52,25 @@ export default function AdminConfigPage() {
   const [tab, setTab]               = useState<Tab>("resource");
   const [saving, setSaving]         = useState(false);
   const [saved, setSaved]           = useState(false);
+  const [loadError, setLoadError]   = useState<string | null>(null);
+  const [loading, setLoading]       = useState(true);
 
   // Resource policy
   const [slotsPerDay, setSlotsPerDay]   = useState(10);
   const [slotDuration, setSlotDuration] = useState(30);
+  const [workingHours, setWorkingHours] = useState({
+    start: "09:00",
+    end: "17:00",
+    timezone: "Asia/Kolkata",
+  });
 
   // Risk thresholds (GREEN max = also YELLOW min)
   const [greenMax,  setGreenMax]  = useState(0.30);
   const [yellowMax, setYellowMax] = useState(0.60);
+  const [overrideRules, setOverrideRules] = useState<Record<string, boolean>>({
+    q9_greater_than_equal_1_immediate_red: true,
+    severe_stress_poor_sleep_escalation: true,
+  });
 
   // Priority weights
   const [wCri,        setWCri]        = useState(0.50);
@@ -69,13 +81,111 @@ export default function AdminConfigPage() {
   const weightSum     = +(wCri + wTrend + wEngagement + wTimeGap).toFixed(2);
   const weightsValid  = weightSum === 1.00;
 
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      setLoading(true);
+      setLoadError(null);
+      try {
+        const [resPol, resRisk, resW] = await Promise.all([
+          adminApi.getResourcePolicies(),
+          adminApi.getRiskThresholds(),
+          adminApi.getAllocationWeights(),
+        ]);
+        if (cancelled) return;
+        const pol = resPol.data as {
+          daily_counseling_slots?: number;
+          slot_duration_minutes?: number;
+          working_hours?: { start?: string; end?: string; timezone?: string };
+        };
+        if (typeof pol.daily_counseling_slots === "number") setSlotsPerDay(pol.daily_counseling_slots);
+        if (typeof pol.slot_duration_minutes === "number") setSlotDuration(pol.slot_duration_minutes);
+        if (pol.working_hours && typeof pol.working_hours === "object") {
+          setWorkingHours((prev) => ({
+            ...prev,
+            ...pol.working_hours,
+          }));
+        }
+
+        const riskRaw = resRisk.data as Record<string, unknown>;
+        const nested = riskRaw.risk_thresholds as { green_max?: number; yellow_max?: number } | undefined;
+        const g =
+          typeof nested?.green_max === "number"
+            ? nested.green_max
+            : typeof riskRaw.green_max === "number"
+              ? riskRaw.green_max
+              : 0.3;
+        const y =
+          typeof nested?.yellow_max === "number"
+            ? nested.yellow_max
+            : typeof riskRaw.yellow_max === "number"
+              ? riskRaw.yellow_max
+              : 0.6;
+        setGreenMax(g);
+        setYellowMax(y);
+        const orules = riskRaw.override_rules as Record<string, boolean> | undefined;
+        if (orules && typeof orules === "object") setOverrideRules((prev) => ({ ...prev, ...orules }));
+
+        const wRaw = resW.data as Record<string, number> & { weights?: Record<string, number> };
+        const w = wRaw.weights ?? wRaw;
+        if (typeof w.cri === "number") setWCri(w.cri);
+        if (typeof w.trend === "number") setWTrend(w.trend);
+        if (typeof w.engagement === "number") setWEngagement(w.engagement);
+        if (typeof w.time_gap === "number") setWTimeGap(w.time_gap);
+      } catch (e) {
+        if (!cancelled) setLoadError(e instanceof Error ? e.message : "Failed to load configuration");
+      } finally {
+        if (!cancelled) setLoading(false);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
   const handleSave = async () => {
     setSaving(true);
-    await new Promise((r) => setTimeout(r, 1000));
-    setSaving(false);
-    setSaved(true);
-    setTimeout(() => setSaved(false), 2000);
+    setSaved(false);
+    try {
+      if (tab === "resource") {
+        await adminApi.updateResourcePolicies({
+          daily_counseling_slots: slotsPerDay,
+          slot_duration_minutes: slotDuration,
+          working_hours: workingHours,
+        });
+      } else if (tab === "thresholds") {
+        await adminApi.updateRiskThresholds({
+          green_max: greenMax,
+          yellow_max: yellowMax,
+          override_rules: overrideRules,
+        });
+      } else {
+        await adminApi.updateAllocationWeights({
+          weights: {
+            cri: wCri,
+            trend: wTrend,
+            engagement: wEngagement,
+            time_gap: wTimeGap,
+          },
+        });
+      }
+      setSaved(true);
+      setTimeout(() => setSaved(false), 2500);
+    } catch (e) {
+      console.error(e);
+      setLoadError(e instanceof Error ? e.message : "Save failed");
+    } finally {
+      setSaving(false);
+    }
   };
+
+  if (loading) {
+    return (
+      <div className="p-8 text-center font-serif text-[#3D5A54] max-w-2xl mx-auto">
+        Loading configuration…
+      </div>
+    );
+  }
 
   return (
     <div className="flex flex-col gap-6 max-w-2xl mx-auto">
@@ -84,6 +194,11 @@ export default function AdminConfigPage() {
         <p className="font-sans font-normal text-sm text-[#3D5A54]/75 mt-1">
           All changes are audit-logged immediately with your admin ID.
         </p>
+        {loadError && (
+          <p className="font-sans text-sm text-[#B03030] mt-2" role="alert">
+            {loadError}
+          </p>
+        )}
       </div>
 
       {/* Tabs */}

@@ -16,11 +16,14 @@ from app.core.security import (
     create_access_token,
     create_refresh_token,
     decode_token,
+    get_dummy_hash,
 )
+from app.modules.auth.rbac import rbac_service
 from app.core.config import settings
 from app.models.user import User
 from app.models.student_profile import StudentProfile
 from app.models.counselor_profile import CounselorProfile
+from app.models.organization import Organization
 from app.modules.auth.schemas import (
     StudentRegisterRequest,
     LoginRequest,
@@ -70,6 +73,32 @@ def _get_client_ip(request=None) -> str:
 
 
 class AuthService:
+    async def _resolve_registration_org_id(
+        self, db: AsyncSession, req: StudentRegisterRequest
+    ) -> str:
+        if getattr(req, "organization_slug", None):
+            slug = req.organization_slug.strip().lower()
+            r = await db.execute(select(Organization.id).where(Organization.slug == slug))
+            oid = r.scalar_one_or_none()
+            if oid:
+                return oid
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Unknown organization. Check your signup link or contact support.",
+            )
+        r = await db.execute(select(Organization.id).where(Organization.slug == "default"))
+        d = r.scalar_one_or_none()
+        if d:
+            return d
+        r = await db.execute(select(Organization.id).limit(1))
+        any_org = r.scalar_one_or_none()
+        if not any_org:
+            raise HTTPException(
+                status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+                detail="No organization is configured for this deployment.",
+            )
+        return any_org
+
     # ------------------------------------------------------------------
     # Register student with idempotency and duplicate detection
     # ------------------------------------------------------------------
@@ -90,10 +119,12 @@ class AuthService:
 
         user_id = str(uuid.uuid4())
         profile_id = str(uuid.uuid4())
+        org_id = await self._resolve_registration_org_id(db, req)
 
         try:
             user = User(
                 id=user_id,
+                organization_id=org_id,
                 role="student",
                 email=email,
                 password_hash=hash_password(req.password),
@@ -129,7 +160,7 @@ class AuthService:
             )
 
     # ------------------------------------------------------------------
-    # Login with account lockout protection
+    # Login with account lockout protection + anti-timing attack
     # ------------------------------------------------------------------
     async def login(
         self, db: AsyncSession, req: LoginRequest, client_ip: str = "unknown"
@@ -144,7 +175,17 @@ class AuthService:
         result = await db.execute(select(User).where(func.lower(User.email) == email))
         user = result.scalar_one_or_none()
 
-        if not user or not verify_password(req.password, user.password_hash):
+        # Anti-timing attack: Always verify against dummy hash first
+        # This ensures consistent response time regardless of whether user exists
+        dummy_hash = get_dummy_hash()
+
+        # Get the stored hash (or use dummy if user doesn't exist)
+        stored_hash = user.password_hash if user else dummy_hash
+
+        # Verify password (always does dummy verification first for timing consistency)
+        password_valid = verify_password(req.password, stored_hash)
+
+        if not user or not password_valid:
             # Track failed attempt
             _failed_login_attempts[lockout_key] = failed_attempts + 1
 
@@ -183,24 +224,32 @@ class AuthService:
                 detail="This account has been deactivated. Contact support.",
             )
 
-# Generate session ID and track active session
+        # Generate session ID and track active session
         session_id = _generate_session_id()
-        
+
         # Simple: start fresh each login (single session enforcement)
         _active_sessions[user.id] = session_id
 
-        # Include session_id in token for validation
+        # Get permissions/scopes from RBAC service
+        scopes = await rbac_service.get_user_scopes(db, user)
+        scopes_list = scopes.split() if scopes else []
+
+        # Include session_id and scopes in token for validation
         token_data = {"sub": user.id, "role": user.role, "session_id": session_id}
-        access_token = create_access_token(token_data)
+        access_token = create_access_token(token_data, scopes=scopes_list)
         refresh_token_data = {
             "sub": user.id,
             "role": user.role,
             "session_id": session_id,
         }
-        refresh_token = create_refresh_token(refresh_token_data)
+        refresh_token = create_refresh_token(refresh_token_data, scopes=scopes_list)
 
         logger.info(
-            "login_success", user_id=user.id, role=user.role, session_id=session_id
+            "login_success",
+            user_id=user.id,
+            role=user.role,
+            session_id=session_id,
+            scopes=scopes,
         )
 
         return {
@@ -208,19 +257,30 @@ class AuthService:
             "refresh_token": refresh_token,
             "user": user,
             "session_id": session_id,
+            "scopes": scopes,  # Include scopes in response for reference
         }
 
     # ------------------------------------------------------------------
     # Refresh token — rotate on use with validation
     # ------------------------------------------------------------------
     async def refresh(self, db: AsyncSession, req: RefreshRequest) -> dict:
+        if not req.refresh_token:
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="Missing refresh token",
+            )
         try:
             payload = decode_token(req.refresh_token)
             if payload.get("type") != "refresh":
                 raise ValueError("Invalid token type")
             user_id: str = payload.get("sub")
+            session_id: str | None = payload.get("session_id")
             if not user_id:
                 raise ValueError("Missing user ID in token")
+            if not session_id:
+                raise ValueError("Missing session ID in token")
+            if not _check_session_valid(user_id, session_id):
+                raise ValueError("Session has been invalidated")
         except (JWTError, ValueError) as e:
             logger.warning("refresh_token_invalid", error=str(e))
             raise HTTPException(
@@ -244,10 +304,14 @@ class AuthService:
                 detail="This account has been deactivated",
             )
 
-        token_data = {"sub": user.id, "role": user.role}
+        # Get current permissions
+        scopes = await rbac_service.get_user_scopes(db, user)
+        scopes_list = scopes.split() if scopes else []
+
+        token_data = {"sub": user.id, "role": user.role, "session_id": session_id}
         return {
-            "access_token": create_access_token(token_data),
-            "refresh_token": create_refresh_token(token_data),
+            "access_token": create_access_token(token_data, scopes=scopes_list),
+            "refresh_token": create_refresh_token(token_data, scopes=scopes_list),
         }
 
     # ------------------------------------------------------------------

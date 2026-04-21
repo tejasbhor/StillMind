@@ -53,6 +53,11 @@ class StudentService:
                 "relation": sanitize_input(gc.relation),
             }
 
+        if req.notification_preferences is not None:
+            consents = dict(profile.consents or {})
+            consents["notification_preferences"] = req.notification_preferences.model_dump()
+            profile.consents = consents
+
         # Increment version
         profile.version = (profile.version or 0) + 1
         profile.updated_at = datetime.now(timezone.utc)

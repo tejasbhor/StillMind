@@ -1,3 +1,10 @@
+import {
+  flattenPortalNav,
+  STUDENT_NAV_SECTIONS,
+  COUNSELOR_NAV_SECTIONS,
+  ADMIN_NAV_SECTIONS,
+} from "@/utils/portal-nav";
+
 // ── Risk Levels ────────────────────────────────────────────────────────────────
 export const RISK_LEVELS = ["GREEN", "YELLOW", "RED"] as const;
 export type RiskLevel = (typeof RISK_LEVELS)[number];
@@ -121,30 +128,23 @@ export const MOOD_LABELS: Record<MoodValue, { emoji: string; label: string }> = 
 // ── Engagement ─────────────────────────────────────────────────────────────────
 export const ENGAGEMENT_LEVELS = ["LOW", "MEDIUM", "HIGH"] as const;
 
-// ── Nav links per role ─────────────────────────────────────────────────────────
-export const STUDENT_NAV = [
-  { href: "/dashboard",      label: "Home",            icon: "Home" },
-  { href: "/dashboard/assessment", label: "Check-in", icon: "ClipboardList" },
-  { href: "/dashboard/appointments", label: "Appointments", icon: "Calendar" },
-  { href: "/dashboard/progress",    label: "Progress", icon: "TrendingUp" },
-  { href: "/dashboard/chat",        label: "Chat",     icon: "MessageCircle" },
-  { href: "/dashboard/notifications", label: "Notifications", icon: "Bell" },
-] as const;
+// ── Nav links per role (flat lists; derived from grouped portal nav — single source) ──
 
-export const COUNSELOR_NAV = [
-  { href: "/counselor",                label: "Dashboard",      icon: "LayoutDashboard" },
-  { href: "/counselor/priority-queue", label: "Priority Queue", icon: "ListOrdered" },
-  { href: "/counselor/schedule",       label: "My Schedule",    icon: "CalendarDays" },
-  { href: "/counselor/chat",           label: "Messages",       icon: "MessageCircle" },
-] as const;
+export const STUDENT_NAV = flattenPortalNav(STUDENT_NAV_SECTIONS) as readonly {
+  href: string;
+  label: string;
+  icon: string;
+}[];
 
-export const ADMIN_NAV = [
-  { href: "/admin",                label: "Overview",     icon: "BarChart3" },
-  { href: "/admin/counselors",     label: "Counselors",   icon: "Users" },
-  { href: "/admin/students",       label: "Students",     icon: "GraduationCap" },
-  { href: "/admin/config",         label: "Configuration", icon: "Settings" },
-  { href: "/admin/audit-logs",     label: "Audit Logs",   icon: "ScrollText" },
-  { href: "/admin/analytics",      label: "Analytics",    icon: "LineChart" },
-  { href: "/admin/system-health",  label: "System Health", icon: "Activity" },
-] as const;
+export const COUNSELOR_NAV = flattenPortalNav(COUNSELOR_NAV_SECTIONS) as readonly {
+  href: string;
+  label: string;
+  icon: string;
+}[];
+
+export const ADMIN_NAV = flattenPortalNav(ADMIN_NAV_SECTIONS) as readonly {
+  href: string;
+  label: string;
+  icon: string;
+}[];
 

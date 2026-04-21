@@ -8,13 +8,13 @@ const SOCKET_URL = process.env.NEXT_PUBLIC_SOCKET_URL ??
   (process.env.NEXT_PUBLIC_API_URL ? process.env.NEXT_PUBLIC_API_URL.replace("/api/v1", "") : "");
 
 interface UseSocketOptions {
-  allocationId?: string;
-  onMessage?: (msg: any) => void;
-  onUserJoined?: (data: any) => void;
-  onTyping?: (data: any) => void;
-  onMessageEdited?: (data: any) => void;
-  onMessageDeleted?: (data: any) => void;
-  onMessagesRead?: (data: any) => void;
+  conversationId?: string;
+  onMessage?: (msg: Record<string, unknown>) => void;
+  onUserJoined?: (data: Record<string, unknown>) => void;
+  onTyping?: (data: Record<string, unknown>) => void;
+  onMessageEdited?: (data: Record<string, unknown>) => void;
+  onMessageDeleted?: (data: Record<string, unknown>) => void;
+  onMessagesRead?: (data: Record<string, unknown>) => void;
 }
 
 interface UseSocketReturn {
@@ -36,7 +36,7 @@ function generateClientMessageId(): string {
 }
 
 export function useSocket({
-  allocationId,
+  conversationId,
   onMessage,
   onUserJoined,
   onTyping,
@@ -45,7 +45,6 @@ export function useSocket({
   onMessagesRead,
 }: UseSocketOptions = {}): UseSocketReturn {
   const socketRef = useRef<Socket | null>(null);
-  const [socket, setSocket] = useState<Socket | null>(null);
   const [connected, setConnected] = useState(false);
   const typingTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
@@ -66,15 +65,14 @@ export function useSocket({
     });
 
     socketRef.current = newSocket;
-    setSocket(newSocket);
 
     newSocket.on("connect", () => {
       setConnected(true);
       console.log("[Socket.IO] Connected");
       
       // Re-join room on reconnect
-      if (allocationId) {
-        newSocket.emit("join_chat", { room: allocationId });
+      if (conversationId) {
+        newSocket.emit("join_chat", { room: conversationId });
       }
     });
 
@@ -133,35 +131,34 @@ export function useSocket({
       newSocket.on("messages_read", onMessagesRead);
     }
 
-    // Auto-join room if allocationId provided
-    if (allocationId) {
+    // Auto-join room if conversationId provided
+    if (conversationId) {
       newSocket.on("connect", () => {
-        newSocket.emit("join_chat", { room: allocationId });
+        newSocket.emit("join_chat", { room: conversationId });
       });
     }
 
     return () => {
       newSocket.disconnect();
       socketRef.current = null;
-      setSocket(null);
       setConnected(false);
     };
-  }, [allocationId]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [conversationId]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const sendMessage = useCallback(
     (content: string, clientMessageId?: string) => {
-      if (!socketRef.current || !allocationId) return;
+      if (!socketRef.current || !conversationId) return;
       
       const msgId = clientMessageId || generateClientMessageId();
       
       socketRef.current.emit("chat_message", {
-        room: allocationId,
+        room: conversationId,
         content,
         client_message_id: msgId,
         idempotency_key: msgId,
       });
     },
-    [allocationId]
+    [conversationId]
   );
 
   const joinRoom = useCallback(
@@ -224,7 +221,7 @@ export function useSocket({
   );
 
   return {
-    socket,
+    socket: socketRef.current,
     connected,
     sendMessage,
     joinRoom,

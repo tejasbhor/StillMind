@@ -154,7 +154,7 @@ async def get_student_case(
                 Allocation.student_id == student_id,
                 Allocation.counselor_id == profile_id,
                 Allocation.status.in_(
-                    ["ASSIGNED", "CONFIRMED", "IN_PROGRESS", "COMPLETED"]
+                    ["ASSIGNED", "CONFIRMED", "COMPLETED"]
                 ),
             )
         )
@@ -234,7 +234,7 @@ async def get_student_risk(
                 Allocation.student_id == student_id,
                 Allocation.counselor_id == profile_id,
                 Allocation.status.in_(
-                    ["ASSIGNED", "CONFIRMED", "IN_PROGRESS", "COMPLETED"]
+                    ["ASSIGNED", "CONFIRMED", "COMPLETED"]
                 ),
             )
         )

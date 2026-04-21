@@ -15,9 +15,8 @@ from app.core.database import Base
 
 class ChatMessage(Base):
     """
-    Persists real-time communication between the assigned counselor and student.
-    Grouped by `allocation_id` which acts as the "Chat Room", guaranteeing that
-    only an explicitly assigned counselor-student pair can communicate.
+    Persists real-time communication grouped by conversation.
+    Supports direct and multi-participant rooms through conversation membership.
 
     Production features:
     - idempotency_key: Prevents duplicate messages on retry
@@ -31,10 +30,17 @@ class ChatMessage(Base):
     id: Mapped[str] = mapped_column(
         String(36), primary_key=True, default=lambda: str(uuid.uuid4())
     )
-    allocation_id: Mapped[str] = mapped_column(
+    conversation_id: Mapped[str] = mapped_column(
+        String(36),
+        ForeignKey("chat_conversations.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
+    # Legacy pointer for backward compatibility with allocation-scoped chats.
+    allocation_id: Mapped[str | None] = mapped_column(
         String(36),
         ForeignKey("allocations.id", ondelete="CASCADE"),
-        nullable=False,
+        nullable=True,
         index=True,
     )
     sender_id: Mapped[str] = mapped_column(

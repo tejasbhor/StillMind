@@ -3,86 +3,86 @@
 #                 Terminal 2: cd apps\web && npm run dev...
 
 services:
-  # Database - PostgreSQL
+  # Database - Isolated internally
   db:
     image: postgres:16-alpine
     container_name: stillmind_db
     restart: unless-stopped
+    env_file: .env
     environment:
-      POSTGRES_DB: stillmind
-      POSTGRES_USER: stillmind
-      POSTGRES_PASSWORD: stillmind_secret
-    ports:
-      - "5432:5432"
+      POSTGRES_DB: ${DB_NAME:-stillmind}
+      POSTGRES_USER: ${DB_USER:-stillmind}
+      POSTGRES_PASSWORD: ${DB_PASSWORD}
     volumes:
       - postgres_data:/var/lib/postgresql/data
+    networks:
+      - stillmind_internal
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U stillmind -d stillmind"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USER:-stillmind} -d ${DB_NAME:-stillmind}"]
+    deploy:
+      resources:
+        limits:
+          memory: 350M
 
-  # Cache - Redis
+  # Cache - Isolated internally
   redis:
     image: redis:7-alpine
     container_name: stillmind_redis
     restart: unless-stopped
-    ports:
-      - "6379:6379"
     volumes:
       - redis_data:/data
-    healthcheck:
-      test: ["CMD", "redis-cli", "ping"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
+    networks:
+      - stillmind_internal
+    deploy:
+      resources:
+        limits:
+          memory: 100M
 
-  # API Backend
+  # API Backend - Reachable by Proxy
   backend:
     build: 
       context: ./apps/api
       dockerfile: Dockerfile
     container_name: stillmind_api
     restart: unless-stopped
+    env_file: .env
     depends_on:
       db:
         condition: service_healthy
       redis:
         condition: service_healthy
-    environment:
-      - DATABASE_URL=postgresql+asyncpg://stillmind:stillmind_secret@db:5432/stillmind
-      - REDIS_URL=redis://redis:6379/0
-      - ENVIRONMENT=production
-    ports:
-      - "8000:8000"
+    networks:
+      - stillmind_internal
+      - proxy_net
+    deploy:
+      resources:
+        limits:
+          memory: 500M
 
-  # Web Frontend
+  # Web Frontend - Reachable by Proxy
   frontend:
     build:
       context: ./apps/web
       dockerfile: Dockerfile
+      args:
+        - NEXT_PUBLIC_API_URL=${NEXT_PUBLIC_API_URL:-/api/v1}
     container_name: stillmind_web
     restart: unless-stopped
-    ports:
-      - "3000:3000"
-    environment:
-      - NEXT_PUBLIC_API_URL=/api/v1
+    env_file: .env
+    networks:
+      - stillmind_internal
+      - proxy_net
+    deploy:
+      resources:
+        limits:
+          memory: 700M
 
-  # Caddy Reverse Proxy
-  caddy:
-    image: caddy:2-alpine
-    container_name: stillmind_gateway
-    restart: unless-stopped
-    ports:
-      - "80:80"
-      - "443:443"
-    volumes:
-      - ./Caddyfile:/etc/caddy/Caddyfile
-      - caddy_data:/data
-      - caddy_config:/config
-    depends_on:
-      - backend
-      - frontend
+networks:
+  stillmind_internal:
+    driver: bridge
+  proxy_net:
+    external: true
+    name: civiclens_civiclens_net
 
 volumes:
   postgres_data:

@@ -1,12 +1,13 @@
 from fastapi import APIRouter, Depends
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select, func, and_
+from sqlalchemy import select, func, and_, desc
 import datetime
 
 from app.core.database import get_db
 from app.core.dependencies import require_counselor, require_student, require_admin
 from app.core.responses import success_response
 
+from app.models.user import User
 from app.models.student_profile import StudentProfile
 from app.models.counselor_profile import CounselorProfile
 from app.models.assessment import Assessment
@@ -127,57 +128,75 @@ async def get_counselor_priority_queue(user=Depends(require_counselor), db: Asyn
     if not profile:
         return success_response(data=[])
 
-    # Fetch all students assigned to this counselor with their latest risk log
-    # We'll use a subquery to get the latest risk log for each student
-    from sqlalchemy import desc
-    
-    # Get all students assigned to this counselor
+    # One row per active allocation (student may appear more than once if multiple allocations)
     stmt = (
-        select(StudentProfile, Allocation, RiskLog)
+        select(StudentProfile, Allocation)
         .join(Allocation, Allocation.student_id == StudentProfile.id)
-        .outerjoin(RiskLog, and_(
-            RiskLog.student_id == StudentProfile.id,
-            RiskLog.id == select(RiskLog.id)
-                .where(RiskLog.student_id == StudentProfile.id)
-                .order_by(desc(RiskLog.created_at))
-                .limit(1)
-                .scalar_subquery()
-        ))
         .where(
             and_(
                 Allocation.counselor_id == profile.id,
-                Allocation.status.in_(["ASSIGNED", "CONFIRMED"])
+                Allocation.status.in_(["ASSIGNED", "CONFIRMED"]),
             )
         )
-        .order_by(desc(RiskLog.cri_score))
+        .order_by(desc(Allocation.priority_score))
     )
-    
     res = await db.execute(stmt)
     rows = res.all()
-    
-    data = []
-    data = []
-    for student, alloc_rec, log_rec in rows:
-        # Get last completed session date
-        last_session_stmt = select(Allocation.completed_at).where(and_(
-            Allocation.student_id == student.id,
-            Allocation.status == "COMPLETED"
-        )).order_by(desc(Allocation.completed_at)).limit(1)
+
+    risk_rank = {"RED": 0, "YELLOW": 1, "GREEN": 2}
+    data: list[dict] = []
+
+    for student, alloc_rec in rows:
+        rl_stmt = (
+            select(RiskLog)
+            .where(RiskLog.student_id == student.id)
+            .order_by(desc(RiskLog.created_at))
+            .limit(1)
+        )
+        rl_res = await db.execute(rl_stmt)
+        log_rec = rl_res.scalar_one_or_none()
+
+        last_session_stmt = (
+            select(Allocation.completed_at)
+            .where(
+                and_(
+                    Allocation.student_id == student.id,
+                    Allocation.status == "COMPLETED",
+                )
+            )
+            .order_by(desc(Allocation.completed_at))
+            .limit(1)
+        )
         last_session_res = await db.execute(last_session_stmt)
         last_session_date = last_session_res.scalar()
+
+        reasons: list = []
+        if log_rec and log_rec.reasoning:
+            reasons = list(log_rec.reasoning) if isinstance(log_rec.reasoning, list) else []
+
+        risk = (log_rec.risk_level if log_rec else "GREEN") or "GREEN"
+        cri = float(log_rec.cri_score) if log_rec else 0.0
+        trend = (log_rec.trend if log_rec else "STABLE") or "STABLE"
 
         data.append({
             "id": student.id,
             "studentId": student.id[:8].upper(),
-            "initials": "".join([n[0] for n in student.full_name.split() if n]),
-            "risk": log_rec.risk_level if log_rec else "GREEN",
-            "trend": log_rec.trend if log_rec else "STABLE",
-            "cri": float(log_rec.cri_score) if log_rec else 0.0,
+            "initials": "".join([n[0] for n in (student.full_name or "").split() if n]) or "?",
+            "risk": risk,
+            "trend": trend,
+            "cri": cri,
             "lastSession": last_session_date.strftime("%d %B %Y") if last_session_date else "N/A",
-            "priorityScore": float(log_rec.cri_score) if log_rec else 0.0,
-            "reasons": log_rec.reasoning if log_rec else []
+            "priorityScore": float(alloc_rec.priority_score) if alloc_rec.priority_score is not None else cri,
+            "reasons": reasons,
         })
-    
+
+    data.sort(
+        key=lambda row: (
+            risk_rank.get(row["risk"], 3),
+            -row["cri"],
+        )
+    )
+
     return success_response(data=data)
 student_router = APIRouter(prefix="/students/me/dashboard", tags=["Dashboards (Student)"])
 
@@ -218,6 +237,7 @@ async def get_student_dashboard(user=Depends(require_student), db: AsyncSession 
     if next_alloc_row:
         alloc, counselor_name = next_alloc_row
         next_appointment = {
+            "id": alloc.id,
             "counselor": counselor_name,
             "date": alloc.slot_time.strftime("%A, %d %B %Y"),
             "time": alloc.slot_time.strftime("%I:%M %p"),
@@ -283,65 +303,73 @@ admin_router = APIRouter(prefix="/admin/dashboard", tags=["Dashboards (Admin)"])
 
 @admin_router.get("", summary="System metrics and overview")
 async def get_admin_dashboard(user=Depends(require_admin), db: AsyncSession = Depends(get_db)):
-    # 1. Total active students
-    total_students_stmt = select(func.count(StudentProfile.id))
-    total_students_res = await db.execute(total_students_stmt)
-    total_students = total_students_res.scalar() or 0
+    org_id = user.organization_id
 
-    # 2. Total counselors
-    total_counselors_stmt = select(func.count(CounselorProfile.id))
-    total_counselors_res = await db.execute(total_counselors_stmt)
-    total_counselors = total_counselors_res.scalar() or 0
+    total_students_stmt = (
+        select(func.count(StudentProfile.id))
+        .join(User, StudentProfile.user_id == User.id)
+        .where(User.organization_id == org_id)
+    )
+    total_students = (await db.execute(total_students_stmt)).scalar() or 0
 
-    # 3. Average wait time (Difference between created_at and slot_time for successful allocations)
-    wait_time_stmt = select(func.avg(Allocation.slot_time - Allocation.created_at)).where(
-        Allocation.status.in_(["CONFIRMED", "COMPLETED"])
+    total_counselors_stmt = (
+        select(func.count(CounselorProfile.id))
+        .join(User, CounselorProfile.user_id == User.id)
+        .where(User.organization_id == org_id)
+    )
+    total_counselors = (await db.execute(total_counselors_stmt)).scalar() or 0
+
+    sp_in_org = (
+        select(StudentProfile.id)
+        .join(User, StudentProfile.user_id == User.id)
+        .where(User.organization_id == org_id)
+    )
+    wait_time_stmt = (
+        select(func.avg(Allocation.slot_time - Allocation.created_at))
+        .where(
+            and_(
+                Allocation.status.in_(["CONFIRMED", "COMPLETED"]),
+                Allocation.student_id.in_(sp_in_org),
+            )
+        )
     )
     wait_time_res = await db.execute(wait_time_stmt)
     avg_wait = wait_time_res.scalar()
-    
-    # Convert timedelta to days (float)
+
     avg_wait_days = 0.0
     if avg_wait:
-        # avg_wait is a datetime.timedelta in many drivers, or a numeric value
         if isinstance(avg_wait, datetime.timedelta):
             avg_wait_days = avg_wait.total_seconds() / 86400
         else:
-            # Handle possible string/numeric from some DB drivers
             try:
-                avg_wait_days = float(avg_wait) / 86400 if isinstance(avg_wait, (int, float)) else 0.5
-            except:
-                avg_wait_days = 0.5
+                avg_wait_days = float(avg_wait) / 86400 if isinstance(avg_wait, (int, float)) else 0.0
+            except Exception:
+                avg_wait_days = 0.0
 
-    # 4. Risk distribution (Latest risk level for each student)
     risk_stats = {"GREEN": 0, "YELLOW": 0, "RED": 0}
-    
-    # Get all students and their latest risk log
-    latest_logs_subquery = (
-        select(RiskLog.student_id, RiskLog.risk_level)
-        .distinct(RiskLog.student_id)
-        .order_by(RiskLog.student_id, RiskLog.created_at.desc())
-        .subquery()
-    )
-    
-    risk_dist_stmt = select(latest_logs_subquery.c.risk_level, func.count()).group_by(latest_logs_subquery.c.risk_level)
-    risk_dist_res = await db.execute(risk_dist_stmt)
-    
-    total_logs = 0
-    for level, count in risk_dist_res.all():
-        if level in risk_stats:
-            risk_stats[level] = count
-            total_logs += count
-            
-    # Calculate percentages
+    sid_rows = await db.execute(sp_in_org)
+    student_ids = [r[0] for r in sid_rows.all()]
+    for sid in student_ids:
+        rl = await db.execute(
+            select(RiskLog.risk_level)
+            .where(RiskLog.student_id == sid)
+            .order_by(desc(RiskLog.created_at))
+            .limit(1)
+        )
+        lvl = rl.scalar_one_or_none()
+        if lvl in risk_stats:
+            risk_stats[lvl] += 1
+    total_logs = sum(risk_stats.values())
     if total_logs > 0:
         distribution = {k: round((v / total_logs) * 100, 1) for k, v in risk_stats.items()}
     else:
         distribution = {"GREEN": 100.0, "YELLOW": 0.0, "RED": 0.0}
 
-    return success_response(data={
-        "total_active_students": total_students,
-        "total_counselors": total_counselors,
-        "average_wait_time_days": round(avg_wait_days, 1),
-        "risk_distribution": distribution
-    })
+    return success_response(
+        data={
+            "total_active_students": total_students,
+            "total_counselors": total_counselors,
+            "average_wait_time_days": round(avg_wait_days, 1),
+            "risk_distribution": distribution,
+        }
+    )

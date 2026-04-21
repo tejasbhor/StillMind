@@ -5,7 +5,7 @@ import Link from "next/link";
 import Card from "@/components/ui/Card";
 import Button from "@/components/ui/Button";
 import { EmptyState } from "@/components/ui/EmptyState";
-import { LoadingState } from "@/components/ui/LoadingState";
+import { LoadingState } from "@/components/ui/Loading";
 import { ErrorState } from "@/components/ui/ErrorState";
 import RiskBadge from "@/components/shared/RiskBadge";
 import TrendIndicator from "@/components/shared/TrendIndicator";

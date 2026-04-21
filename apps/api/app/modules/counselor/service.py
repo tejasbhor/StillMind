@@ -19,7 +19,7 @@ class CounselorService:
         
         # Get students without active allocations who have RED/YELLOW risk
         alloc_subq = select(Allocation.student_id).where(
-            Allocation.status.in_(["ASSIGNED", "CONFIRMED", "IN_PROGRESS", "PENDING_RANKING"])
+            Allocation.status.in_(["ASSIGNED", "CONFIRMED", "PENDING_RANKING"])
         ).subquery()
         
         result = await db.execute(
@@ -96,7 +96,7 @@ to available counselors based on Priority Score and Counselor capacity.
             select(func.count(Allocation.id)).where(
                 and_(
                     Allocation.counselor_id == counselor_id,
-                    Allocation.status.in_(["ASSIGNED", "CONFIRMED", "IN_PROGRESS"])
+                    Allocation.status.in_(["ASSIGNED", "CONFIRMED"])
                 )
             )
         )

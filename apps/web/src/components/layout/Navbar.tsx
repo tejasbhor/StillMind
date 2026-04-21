@@ -56,15 +56,20 @@ export default function Navbar() {
 
         {/* Desktop Navigation */}
         <nav className="hidden lg:flex items-center gap-8">
-          {visibleItems.map((item) => (
-            <Link
-              key={item.label}
-              href={item.href.startsWith("#") && pathname !== "/" ? `/${item.href}` : item.href}
-              className={`font-sans text-xs font-bold uppercase tracking-[0.15em] transition-all underline-reveal whitespace-nowrap ${navStyles.textMuted}`}
-            >
-              {item.label}
-            </Link>
-          ))}
+          {visibleItems.map((item) => {
+            const isFallback = !NAV_CONFIG[pathname];
+            const finalHref = item.href.startsWith("#") && isFallback ? `/${item.href}` : item.href;
+            
+            return (
+              <Link
+                key={item.label}
+                href={finalHref}
+                className={`font-sans text-xs font-bold uppercase tracking-[0.15em] transition-all underline-reveal whitespace-nowrap ${navStyles.textMuted}`}
+              >
+                {item.label}
+              </Link>
+            );
+          })}
 
           {/* More Dropdown */}
           {overflowItems.length > 0 && (
@@ -85,16 +90,21 @@ export default function Navbar() {
                     transition={{ duration: 0.2, ease: [0.22, 1, 0.36, 1] }}
                     className="absolute top-10 left-1/2 -translate-x-1/2 min-w-[200px] rounded-2xl p-2 border shadow-float bg-white border-teal/5"
                   >
-                    {overflowItems.map((item) => (
-                      <Link
-                        key={item.label}
-                        href={pathname !== "/" && item.href.startsWith("#") ? `/${item.href}` : item.href}
-                        onClick={() => setDropdownOpen(false)}
-                        className="block px-4 py-3 rounded-xl font-sans text-[11px] font-bold uppercase tracking-widest transition-all text-teal/70 hover:text-teal hover:bg-teal/5"
-                      >
-                        {item.label}
-                      </Link>
-                    ))}
+                      {overflowItems.map((item) => {
+                        const isFallback = !NAV_CONFIG[pathname];
+                        const finalHref = item.href.startsWith("#") && isFallback ? `/${item.href}` : item.href;
+                        
+                        return (
+                          <Link
+                            key={item.label}
+                            href={finalHref}
+                            onClick={() => setDropdownOpen(false)}
+                            className="block px-4 py-3 rounded-xl font-sans text-[11px] font-bold uppercase tracking-widest transition-all text-teal/70 hover:text-teal hover:bg-teal/5"
+                          >
+                            {item.label}
+                          </Link>
+                        );
+                      })}
                   </motion.div>
                 )}
               </AnimatePresence>

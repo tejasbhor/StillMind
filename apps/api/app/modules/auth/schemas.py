@@ -58,6 +58,8 @@ class StudentRegisterRequest(BaseModel):
     college_id: Optional[str] = None
     phone: Optional[str] = None
     idempotency_key: Optional[str] = None
+    """If set, must match an existing organization slug (e.g. from your institution's signup link)."""
+    organization_slug: Optional[str] = None
 
     @field_validator("password")
     @classmethod
@@ -126,7 +128,7 @@ class LoginRequest(BaseModel):
 
 
 class RefreshRequest(BaseModel):
-    refresh_token: str
+    refresh_token: Optional[str] = None
 
 
 class ForgotPasswordRequest(BaseModel):
@@ -178,14 +180,14 @@ class StudentRegisterResponse(BaseModel):
 
 class LoginResponse(BaseModel):
     access_token: str
-    refresh_token: str
     token_type: str = "bearer"
     user: UserOut
+    session_id: Optional[str] = None
+    scopes: Optional[str] = None  # Space-separated permissions for reference
 
 
 class RefreshResponse(BaseModel):
     access_token: str
-    refresh_token: str
     token_type: str = "bearer"
 
 

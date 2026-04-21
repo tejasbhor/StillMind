@@ -6,6 +6,7 @@ from sqlalchemy import select
 from app.models.assessment import Assessment
 from app.modules.assessment.schemas import AssessmentCreate
 from app.services.audit_service import audit
+from app.core.student_context import resolve_student_profile_id
 
 from arq import create_pool
 from app.workers.settings import arq_redis_settings
@@ -17,7 +18,10 @@ async def enqueue_risk_computation(db: AsyncSession, assessment_id: str, student
     await redis.close()
 
 class AssessmentService:
-    async def submit_assessment(self, db: AsyncSession, student_id: str, req: AssessmentCreate, assessment_type: str = "INITIAL") -> dict:
+    async def submit_assessment(self, db: AsyncSession, user_id: str, req: AssessmentCreate, assessment_type: str = "INITIAL") -> dict:
+        profile_id = await resolve_student_profile_id(db, user_id)
+        if not profile_id:
+            raise HTTPException(status_code=404, detail="Student profile not found.")
         # Validate inputs precisely
         for i in range(1, 10):
             val = req.phq9.get(f"q{i}")
@@ -38,7 +42,7 @@ class AssessmentService:
 
         assessment = Assessment(
             id=str(uuid.uuid4()),
-            student_id=student_id,
+            student_id=profile_id,
             assessment_type=assessment_type,
             phq9_scores=req.phq9,
             phq9_total=phq9_total,
@@ -52,16 +56,25 @@ class AssessmentService:
         )
         
         db.add(assessment)
-        await audit.log(db, action="ASSESSMENT_SUBMITTED", actor_id=student_id, actor_role="student", resource_id=assessment.id)
+        await audit.log(db, action="ASSESSMENT_SUBMITTED", actor_id=user_id, actor_role="student", resource_id=assessment.id)
         await db.commit()
         await db.refresh(assessment)
         
         # Enqueue background job (fire-and-forget in prod, but inline for now? We use ARQ)
         import asyncio
-        asyncio.create_task(enqueue_risk_computation(db, assessment.id, student_id))
+        asyncio.create_task(enqueue_risk_computation(db, assessment.id, profile_id))
         
         return assessment
         
-    async def list_assessments(self, db: AsyncSession, student_id: str):
-        result = await db.execute(select(Assessment).where(Assessment.student_id == student_id).order_by(Assessment.created_at.desc()))
+    async def list_assessments(self, db: AsyncSession, user_id: str, limit: int = 50, offset: int = 0):
+        profile_id = await resolve_student_profile_id(db, user_id)
+        if not profile_id:
+            return []
+        result = await db.execute(
+            select(Assessment)
+            .where(Assessment.student_id == profile_id)
+            .order_by(Assessment.created_at.desc())
+            .offset(offset)
+            .limit(limit)
+        )
         return list(result.scalars().all())

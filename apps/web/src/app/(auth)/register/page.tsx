@@ -2,300 +2,344 @@
 
 import Link from "next/link";
 import { useState } from "react";
+import { useRouter } from "next/navigation";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
+import { Eye, EyeOff, GraduationCap, Lock, Shield, ShieldCheck, User, UserCheck } from "lucide-react";
 import Button from "@/components/ui/Button";
 import Input from "@/components/ui/Input";
 import { cn } from "@/utils/cn";
-import { api } from "@/services/api";
+import { authApi, studentApi } from "@/services/api";
+import { useAuthStore } from "@/hooks/auth-store";
 
-const API_BASE = process.env.NEXT_PUBLIC_API_URL ?? "/api/v1";
+type Role = "student" | "counselor" | "admin";
+const ROLE_ICONS = {
+  student: GraduationCap,
+  counselor: User,
+  admin: Shield,
+} as const;
 
-// ── Zod schemas per step ───────────────────────────────────────────────────────
-const step1Schema = z.object({
-  email:           z.string().email("Please enter a valid email address"),
-  password:        z.string().min(8, "Password must be at least 8 characters").max(128, "Password too long"),
-  confirmPassword: z.string(),
-}).refine((d) => d.password === d.confirmPassword, {
-  message: "Passwords do not match",
-  path: ["confirmPassword"],
-});
-
-const step2Schema = z.object({
-  full_name:  z.string().min(2, "Full name is required").max(100, "Name too long"),
-  college_id: z.string().min(2, "College ID is required").max(50, "College ID too long"),
-  phone:      z.string().optional(),
-});
+const registerSchema = z
+  .object({
+    email: z.string().email("Please enter a valid email address"),
+    full_name: z.string().trim().min(2, "Full name is required").max(100, "Name is too long"),
+    college_id: z.string().trim().min(2, "College ID is required").max(50, "College ID is too long"),
+    phone: z
+      .string()
+      .trim()
+      .optional()
+      .refine((v) => !v || /^\+?[0-9\s()-]{7,20}$/.test(v), "Please enter a valid phone number"),
+    password: z
+      .string()
+      .min(8, "Password must be at least 8 characters")
+      .max(128, "Password is too long")
+      .regex(/[A-Za-z]/, "Password must include at least one letter")
+      .regex(/[0-9]/, "Password must include at least one number"),
+    confirmPassword: z.string(),
+    dataUsageConsent: z.boolean().refine(Boolean, "Data usage consent is required"),
+    counselingConsent: z.boolean().refine(Boolean, "Counseling consent is required"),
+    emergencyEscalationConsent: z.boolean().optional(),
+  })
+  .refine((data) => data.password === data.confirmPassword, {
+    message: "Passwords do not match",
+    path: ["confirmPassword"],
+  });
 
 const CONSENTS = [
-  { id: "data_usage_consent",        label: "Data usage consent",              required: true,  description: "I consent to StillMind processing my responses to provide mental health support services." },
-  { id: "counseling_consent",        label: "Counselling service consent",     required: true,  description: "I consent to being connected with a counsellor and attending scheduled sessions." },
-  { id: "emergency_escalation_consent", label: "Emergency escalation consent", required: false, description: "I consent to my counsellor escalating my case to an administrator if an urgent risk is identified. (Optional)" },
+  { id: "dataUsageConsent", label: "Data usage consent", required: true, description: "I consent to StillMind processing my responses to provide support services." },
+  { id: "counselingConsent", label: "Counseling service consent", required: true, description: "I consent to being connected with a counselor and attending scheduled sessions." },
+  { id: "emergencyEscalationConsent", label: "Emergency escalation consent", required: false, description: "I consent to escalation to institutional support in urgent situations. (Optional)" },
 ];
 
-type Step1Data = z.infer<typeof step1Schema>;
-type Step2Data = z.infer<typeof step2Schema>;
-
-const STEP_LABELS = ["Account", "Profile", "Consent"];
+type RegisterData = z.infer<typeof registerSchema>;
+const DEMO_STUDENT = {
+  email: "student@stillmind.edu",
+  password: "student123",
+  full_name: "Demo Student",
+  college_id: "CS2024001",
+  phone: "+91 9876543210",
+};
 
 export default function RegisterPage() {
-  const [step, setStep]         = useState(1);
-  const [loading, setLoading]   = useState(false);
-  const [error, setError]       = useState<string | null>(null);
-  const [consents, setConsents] = useState<Record<string, boolean>>({});
-  const [formData, setFormData] = useState<Partial<Step1Data & Step2Data>>({});
+  const router = useRouter();
+  const { login } = useAuthStore();
 
-  const form1 = useForm<Step1Data>({ resolver: zodResolver(step1Schema) });
-  const form2 = useForm<Step2Data>({ resolver: zodResolver(step2Schema) });
+  const [selectedRole, setSelectedRole] = useState<Role>("student");
+  const [showPassword, setShowPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
-  const toggleConsent = (id: string) =>
-    setConsents((prev) => ({ ...prev, [id]: !prev[id] }));
+  const form = useForm<RegisterData>({
+    resolver: zodResolver(registerSchema),
+    defaultValues: {
+      emergencyEscalationConsent: false,
+    },
+  });
 
-  const requiredConsentsGiven = CONSENTS.filter((c) => c.required).every(
-    (c) => consents[c.id]
-  );
-
-  const onStep1 = (data: Step1Data) => {
-    setFormData((prev) => ({ ...prev, ...data }));
-    setStep(2);
+  const handleStudentDemoFill = () => {
+    form.setValue("email", DEMO_STUDENT.email, { shouldValidate: true });
+    form.setValue("password", DEMO_STUDENT.password, { shouldValidate: true });
+    form.setValue("confirmPassword", DEMO_STUDENT.password, { shouldValidate: true });
+    form.setValue("full_name", DEMO_STUDENT.full_name, { shouldValidate: true });
+    form.setValue("college_id", DEMO_STUDENT.college_id, { shouldValidate: true });
+    form.setValue("phone", DEMO_STUDENT.phone, { shouldValidate: true });
+    form.setValue("dataUsageConsent", true, { shouldValidate: true });
+    form.setValue("counselingConsent", true, { shouldValidate: true });
+    form.setValue("emergencyEscalationConsent", true, { shouldValidate: true });
   };
-  
-  const onStep2 = (data: Step2Data) => {
-    setFormData((prev) => ({ ...prev, ...data }));
-    setStep(3);
-  };
-  
-  const onSubmit = async () => {
+
+  const onSubmit = async (data: RegisterData) => {
     setLoading(true);
     setError(null);
-    
+
     try {
-      // Register the student with backend
-      const response = await fetch(`${API_BASE}/auth/register/student`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          email: formData.email,
-          password: formData.password,
-          full_name: formData.full_name,
-          college_id: formData.college_id,
-          phone: formData.phone,
-        }),
+      await authApi.registerStudent({
+        email: data.email,
+        password: data.password,
+        full_name: data.full_name,
+        college_id: data.college_id,
+        phone: data.phone,
       });
-      
-      const json = await response.json();
-      
-      if (!response.ok) {
-        throw new Error(json?.detail || json?.error?.message || "Registration failed");
-      }
-      
-      // Success - redirect to assessment
-      window.location.href = "/dashboard/assessment";
+
+      await login({ email: data.email, password: data.password });
+
+      await studentApi.submitConsents({
+        data_usage: { granted: data.dataUsageConsent },
+        counseling: { granted: data.counselingConsent },
+        emergency_escalation: { granted: !!data.emergencyEscalationConsent },
+      });
+
+      router.push("/dashboard/assessment");
     } catch (e: any) {
-      setError(e.message || "Registration failed. Please try again.");
+      setError(e?.message || "Registration failed. Please try again.");
     } finally {
       setLoading(false);
     }
   };
 
   return (
-    <div className="animate-scale-in flex flex-col gap-8">
+    <div className="animate-scale-in flex flex-col gap-7">
       {/* Header */}
       <div className="flex flex-col gap-2">
-        <h1 className="font-serif text-3xl text-[#3D5A54]">Create your account.</h1>
-        <p className="font-sans font-light text-sm text-[#3D5A54]/55">
-          Step {step} of 3 — {STEP_LABELS[step - 1]}
+        <h1 className="font-serif text-3xl md:text-4xl tracking-tight text-teal-dark">
+          Create your account.
+        </h1>
+        <p className="font-sans text-sm text-teal/65">
+          Start with your role. Student self-signup is open.
         </p>
       </div>
 
-      {/* Error display */}
-      {error && (
-        <div className="rounded-xl bg-[#FDEAEA] border border-[#F5B8B8] px-4 py-3">
-          <p className="font-sans text-sm text-[#B03030]">{error}</p>
-        </div>
-      )}
-
-      {/* Step progress */}
-      <div className="flex items-center gap-2">
-        {STEP_LABELS.map((label, i) => {
-          const s = i + 1;
-          const active   = s === step;
-          const complete = s < step;
-          return (
-            <div key={label} className="flex items-center gap-2 flex-1">
-              <div className="flex flex-col items-center gap-1">
-                <div
-                  className={cn(
-                    "w-7 h-7 rounded-full flex items-center justify-center text-xs font-medium font-sans transition-all duration-300",
-                    complete ? "bg-[#7BA89A] text-white" : "",
-                    active   ? "bg-[#3D5A54] text-white" : "",
-                    !active && !complete ? "bg-[#E8F2EE] text-[#3D5A54]/40 border border-[#B8D4C0]" : ""
-                  )}
-                >
-                  {complete ? "✓" : s}
-                </div>
-              </div>
-              {i < STEP_LABELS.length - 1 && (
-                <div
-                  className={cn(
-                    "flex-1 h-px transition-all duration-500",
-                    complete ? "bg-[#7BA89A]" : "bg-[#E8F2EE]"
-                  )}
-                />
-              )}
-            </div>
-          );
-        })}
+      {/* Role selection */}
+      <div className="grid grid-cols-3 gap-1.5 rounded-full border border-teal/10 bg-[#f7f9f7] p-1">
+        {[
+          { id: "student", label: "Student" },
+          { id: "counselor", label: "Counselor" },
+          { id: "admin", label: "Admin" },
+        ].map((role) => (
+          <button
+            key={role.id}
+            type="button"
+            onClick={() => setSelectedRole(role.id as Role)}
+            className={cn(
+              "inline-flex items-center justify-center gap-1.5 rounded-full px-3 py-2 text-xs font-black uppercase tracking-[0.15em] transition-all",
+              selectedRole === role.id
+                ? "bg-teal text-white shadow-soft"
+                : "text-teal/60 hover:bg-teal/5"
+            )}
+          >
+            {(() => {
+              const Icon = ROLE_ICONS[role.id as Role];
+              return <Icon className="h-3.5 w-3.5" />;
+            })()}
+            {role.label}
+          </button>
+        ))}
       </div>
 
-      {/* ── Step 1: Account ── */}
-      {step === 1 && (
-        <form onSubmit={form1.handleSubmit(onStep1)} className="flex flex-col gap-5" noValidate>
-          {/* Quick Demo Pre-fill */}
-          <div className="flex flex-wrap items-center gap-2 mb-[-8px]">
-            <p className="font-sans text-xs text-[#3D5A54]/60 mr-1">Quick Demo:</p>
-            <button type="button" onClick={() => { form1.setValue("email", "student@university.edu"); form1.setValue("password", "demo1234"); form1.setValue("confirmPassword", "demo1234"); }} className="px-3 py-1 font-sans text-xs rounded-full bg-[#E8F2EE] text-[#3D5A54] hover:bg-[#7BA89A] hover:text-white transition-all cursor-pointer">Student</button>
-            <button type="button" onClick={() => { form1.setValue("email", "counselor@university.edu"); form1.setValue("password", "demo1234"); form1.setValue("confirmPassword", "demo1234"); }} className="px-3 py-1 font-sans text-xs rounded-full bg-[#FEF4E0] text-[#A0700A] hover:bg-[#D4A017] hover:text-white transition-all cursor-pointer">Counsellor</button>
-            <button type="button" onClick={() => { form1.setValue("email", "admin@university.edu"); form1.setValue("password", "demo1234"); form1.setValue("confirmPassword", "demo1234"); }} className="px-3 py-1 font-sans text-xs rounded-full bg-[#FDEAEA] text-[#B03030] hover:bg-[#B03030] hover:text-white transition-all cursor-pointer">Admin</button>
+      {selectedRole !== "student" ? (
+        <div className="rounded-2xl border border-teal/10 bg-white p-5 md:p-6 space-y-4">
+          <div className="flex items-start gap-3">
+            <Lock className="h-5 w-5 text-teal mt-0.5" />
+            <div>
+              <h2 className="font-serif text-2xl text-teal-dark">
+                Institutional access only
+              </h2>
+              <p className="font-sans text-sm text-teal/65 mt-1 leading-relaxed">
+                Counselor and admin accounts are provisioned by your institution. Use your assigned credentials to sign in.
+              </p>
+            </div>
           </div>
+          <div className="flex gap-3">
+            <Button type="button" size="lg" className="flex-1" onClick={() => router.push("/login")}>
+              Sign in
+            </Button>
+            <Button type="button" variant="ghost" size="lg" className="flex-1" onClick={() => router.push("/contact")}>
+              Contact support
+            </Button>
+          </div>
+        </div>
+      ) : (
+        <form onSubmit={form.handleSubmit(onSubmit)} className="flex flex-col gap-5" noValidate>
+          {error && (
+            <div className="rounded-xl bg-[#FDEAEA] border border-[#F5B8B8] px-4 py-3">
+              <p className="font-sans text-sm text-[#B03030]">{error}</p>
+            </div>
+          )}
+
+          <div className="flex flex-wrap items-center gap-2 mb-[-6px]">
+            <p className="font-sans text-xs text-teal/60 mr-1">Quick Demo:</p>
+            <button
+              type="button"
+              onClick={handleStudentDemoFill}
+              className="px-3 py-1 font-sans text-xs rounded-full bg-[#E8F2EE] text-teal-dark hover:bg-sage hover:text-white transition-all cursor-pointer"
+            >
+              Prefill student demo
+            </button>
+          </div>
+
           <Input
             id="reg-email"
             label="Email address"
+            floating={false}
+            showFocusLine={false}
             type="email"
             placeholder="you@university.edu"
-            error={form1.formState.errors.email?.message}
-            {...form1.register("email")}
+            autoComplete="email"
+            showStatusIcon={false}
+            error={form.formState.errors.email?.message}
+            {...form.register("email")}
           />
-          <Input
-            id="reg-password"
-            label="Password"
-            type="password"
-            placeholder="At least 8 characters"
-            hint="Use a mix of letters, numbers and symbols."
-            error={form1.formState.errors.password?.message}
-            {...form1.register("password")}
-          />
-          <Input
-            id="reg-confirm-password"
-            label="Confirm password"
-            type="password"
-            placeholder="Repeat your password"
-            error={form1.formState.errors.confirmPassword?.message}
-            {...form1.register("confirmPassword")}
-          />
-          <Button type="submit" size="lg" className="w-full mt-2" id="reg-step1-next">
-            Continue
-          </Button>
-          <p className="text-center font-sans text-sm font-light text-[#3D5A54]/55">
-            Already have an account?{" "}
-            <Link href="/login" className="font-medium text-[#7BA89A] hover:text-[#5C8A7B] transition-colors">
-              Sign in
-            </Link>
-          </p>
-        </form>
-      )}
-
-      {/* ── Step 2: Profile ── */}
-      {step === 2 && (
-        <form onSubmit={form2.handleSubmit(onStep2)} className="flex flex-col gap-5" noValidate>
           <Input
             id="reg-full-name"
             label="Full name"
+            floating={false}
+            showFocusLine={false}
             type="text"
             placeholder="Alex Sharma"
-            error={form2.formState.errors.full_name?.message}
-            {...form2.register("full_name")}
+            autoComplete="name"
+            showStatusIcon={false}
+            error={form.formState.errors.full_name?.message}
+            {...form.register("full_name")}
           />
           <Input
             id="reg-college-id"
             label="College ID"
+            floating={false}
+            showFocusLine={false}
             type="text"
             placeholder="e.g. CS2024001"
-            hint="This is your student ID from your institution."
-            error={form2.formState.errors.college_id?.message}
-            {...form2.register("college_id")}
+            hint="Use your institution-issued identifier."
+            showStatusIcon={false}
+            error={form.formState.errors.college_id?.message}
+            {...form.register("college_id")}
           />
           <Input
             id="reg-phone"
             label="Phone (optional)"
+            floating={false}
+            showFocusLine={false}
             type="tel"
             placeholder="+91 98765 43210"
-            {...form2.register("phone")}
+            autoComplete="tel"
+            showStatusIcon={false}
+            error={form.formState.errors.phone?.message}
+            {...form.register("phone")}
           />
-          <div className="flex gap-3 mt-2">
-            <Button type="button" variant="ghost" size="lg" className="flex-1" onClick={() => setStep(1)}>
-              Back
-            </Button>
-            <Button type="submit" size="lg" className="flex-1" id="reg-step2-next">
-              Continue
-            </Button>
-          </div>
-        </form>
-      )}
 
-      {/* ── Step 3: Consent ── */}
-      {step === 3 && (
-        <div className="flex flex-col gap-5">
-          <div className="rounded-xl bg-[#E8F2EE] border border-[#B8D4C0] px-4 py-3">
-            <p className="font-sans text-xs font-light text-[#3D5A54]/70 leading-relaxed">
-              Before we begin, we need your consent to process your information. Please read each statement carefully.
+          <Input
+            id="reg-password"
+            label="Password"
+            floating={false}
+            showFocusLine={false}
+            type={showPassword ? "text" : "password"}
+            placeholder="At least 8 characters with letters and numbers"
+            autoComplete="new-password"
+            showStatusIcon={false}
+            error={form.formState.errors.password?.message}
+            className="pr-10"
+            {...form.register("password")}
+            rightElement={
+              <button
+                type="button"
+                onClick={() => setShowPassword((s) => !s)}
+                className="text-teal/40 hover:text-teal transition-colors p-1"
+                aria-label={showPassword ? "Hide password" : "Show password"}
+              >
+                {showPassword ? <EyeOff size={18} strokeWidth={1.5} /> : <Eye size={18} strokeWidth={1.5} />}
+              </button>
+            }
+          />
+          <Input
+            id="reg-confirm-password"
+            label="Confirm password"
+            floating={false}
+            showFocusLine={false}
+            type={showConfirmPassword ? "text" : "password"}
+            placeholder="Repeat your password"
+            autoComplete="new-password"
+            showStatusIcon={false}
+            error={form.formState.errors.confirmPassword?.message}
+            className="pr-10"
+            {...form.register("confirmPassword")}
+            rightElement={
+              <button
+                type="button"
+                onClick={() => setShowConfirmPassword((s) => !s)}
+                className="text-teal/40 hover:text-teal transition-colors p-1"
+                aria-label={showConfirmPassword ? "Hide password" : "Show password"}
+              >
+                {showConfirmPassword ? <EyeOff size={18} strokeWidth={1.5} /> : <Eye size={18} strokeWidth={1.5} />}
+              </button>
+            }
+          />
+
+          <div className="rounded-xl border border-teal/10 bg-[#F8FCFA] p-4 space-y-3">
+            <div className="flex items-center gap-2">
+              <ShieldCheck className="h-4 w-4 text-teal" />
+              <p className="font-sans text-xs font-bold uppercase tracking-[0.15em] text-teal/60">
+                Consent
+              </p>
+            </div>
+            {CONSENTS.map((consent) => (
+              <label key={consent.id} className="flex items-start gap-3">
+                <input
+                  type="checkbox"
+                  className="mt-1 h-4 w-4 rounded border-teal/20 accent-sage"
+                  {...form.register(consent.id as keyof RegisterData)}
+                />
+                <span className="font-sans text-xs text-teal/70 leading-relaxed">
+                  <strong className="text-teal-dark font-semibold">{consent.label}</strong>
+                  {consent.required ? " *" : ""} - {consent.description}
+                </span>
+              </label>
+            ))}
+            {(form.formState.errors.dataUsageConsent || form.formState.errors.counselingConsent) && (
+              <p className="text-xs text-[#B03030]">
+                Required consents must be accepted to continue.
+              </p>
+            )}
+          </div>
+
+          <Button type="submit" size="lg" className="w-full mt-1 !rounded-full !py-4" loading={loading} id="reg-submit">
+            Create student account
+          </Button>
+
+          <div className="rounded-xl border border-teal/10 bg-white px-4 py-3 flex items-start gap-2">
+            <UserCheck className="h-4 w-4 text-teal mt-0.5" />
+            <p className="font-sans text-xs text-teal/65 leading-relaxed">
+              After signup, we sign you in automatically and activate your profile with required consents.
             </p>
           </div>
 
-          <div className="flex flex-col gap-4">
-            {CONSENTS.map((consent) => (
-              <label
-                key={consent.id}
-                htmlFor={`consent-${consent.id}`}
-                className={cn(
-                  "flex gap-3 rounded-xl border p-4 cursor-pointer transition-all duration-200",
-                  consents[consent.id]
-                    ? "border-[#7BA89A] bg-[#E8F2EE]"
-                    : "border-[#E8F2EE] bg-white hover:border-[#B8D4C0]"
-                )}
-              >
-                <input
-                  id={`consent-${consent.id}`}
-                  type="checkbox"
-                  checked={!!consents[consent.id]}
-                  onChange={() => toggleConsent(consent.id)}
-                  className="mt-0.5 h-4 w-4 rounded border-[#B8D4C0] accent-[#7BA89A] flex-shrink-0"
-                />
-                <div className="flex flex-col gap-1">
-                  <span className="font-sans text-sm font-medium text-[#3D5A54]">
-                    {consent.label}
-                    {consent.required && <span className="ml-1 text-[#B03030]">*</span>}
-                  </span>
-                  <span className="font-sans text-xs font-light text-[#3D5A54]/60 leading-relaxed">
-                    {consent.description}
-                  </span>
-                </div>
-              </label>
-            ))}
-          </div>
-
-          <div className="flex gap-3 mt-2">
-            <Button type="button" variant="ghost" size="lg" className="flex-1" onClick={() => setStep(2)}>
-              Back
-            </Button>
-            <Button
-              type="button"
-              size="lg"
-              className="flex-1"
-              id="reg-submit"
-              loading={loading}
-              disabled={!requiredConsentsGiven}
-              onClick={onSubmit}
-            >
-              Create account
-            </Button>
-          </div>
-
-          <p className="font-sans text-xs font-light text-center text-[#3D5A54]/40 leading-relaxed">
-            Required fields marked with *. You may withdraw non-required consents at any time.
+          <p className="text-center font-sans text-sm font-light text-teal/55">
+            Already have an account?{" "}
+            <Link href="/login" className="font-semibold text-sage hover:text-teal transition-colors">
+              Sign in
+            </Link>
           </p>
-        </div>
+        </form>
       )}
     </div>
   );

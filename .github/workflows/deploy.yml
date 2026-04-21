@@ -25,9 +25,9 @@ jobs:
             # Pull latest code
             git pull origin main
             
-            # Restart containers and build new images if anything changed
-            docker compose down
-            docker compose up -d --build
+            # Use the sequential safe-deploy script
+            chmod +x scripts/deploy.sh
+            ./scripts/deploy.sh
             
             # Run database migrations
             docker compose exec -T backend uv run alembic upgrade head

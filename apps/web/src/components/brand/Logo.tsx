@@ -9,12 +9,18 @@ interface LogoProps {
   className?: string;
   variant?: "horizontal" | "stacked" | "iconOnly";
   iconSize?: "sm" | "md" | "lg";
+  /** Defaults to `/`. Use `/dashboard`, `/counselor`, etc. in app shells. */
+  href?: string;
+  /** When true, renders brand mark without a `<Link>` (e.g. inside a `<button>`). */
+  suppressLink?: boolean;
 }
 
 export default function Logo({ 
   className = "", 
   variant = "horizontal",
-  iconSize = "md"
+  iconSize = "md",
+  href = "/",
+  suppressLink = false,
 }: LogoProps) {
   
   const sizeClasses = {
@@ -33,12 +39,7 @@ export default function Logo({
   const textColor = "#214C46"; // Brand Teal
   const hoverColor = "#4F7F77"; // Sage Teal
 
-  return (
-    <Link 
-      href="/" 
-      className={`group/logo select-none outline-none inline-block ${className}`}
-      aria-label="StillMind Home"
-    >
+  const inner = (
       <motion.div 
         className={`flex ${isStacked ? "flex-col items-center gap-1" : "items-center gap-1.5"}`}
         whileHover="hover"
@@ -77,6 +78,21 @@ export default function Logo({
           </motion.span>
         )}
       </motion.div>
+  );
+
+  if (suppressLink) {
+    return (
+      <span className={cn("group/logo select-none inline-block", className)}>{inner}</span>
+    );
+  }
+
+  return (
+    <Link 
+      href={href} 
+      className={cn("group/logo select-none outline-none inline-block", className)}
+      aria-label="StillMind Home"
+    >
+      {inner}
     </Link>
   );
 }

@@ -2,17 +2,34 @@ import structlog
 from contextlib import asynccontextmanager
 from fastapi import FastAPI, Request, status
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import JSONResponse
+from fastapi.responses import JSONResponse, Response
 from pydantic import ValidationError
 from slowapi import Limiter, _rate_limit_exceeded_handler
 from slowapi.util import get_remote_address
 from slowapi.errors import RateLimitExceeded
 from slowapi.middleware import SlowAPIMiddleware
+from starlette.middleware.base import BaseHTTPMiddleware
 
 from app.core.config import settings
 from app.core.responses import error_response
 
 limiter = Limiter(key_func=get_remote_address, default_limits=["60/minute"])
+
+
+# ---------------------------------------------------------------------------
+# HSTS Middleware — Force HTTPS in production
+# ---------------------------------------------------------------------------
+class HSTSMiddleware(BaseHTTPMiddleware):
+    async def dispatch(self, request: Request, call_next):
+        response = await call_next(request)
+        # Only add HSTS header when not in debug mode
+        if not settings.DEBUG and request.url.scheme == "https":
+            # HSTS: 1 year, include subdomains, preload
+            response.headers["Strict-Transport-Security"] = (
+                "max-age=31536000; includeSubDomains; preload"
+            )
+        return response
+
 
 # Routers
 from app.modules.auth.router import router as auth_router
@@ -38,6 +55,19 @@ log = structlog.get_logger(__name__)
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     log.info("stillmind_api_starting", env=settings.ENVIRONMENT)
+
+    # Seed RBAC permissions and roles on startup
+    from app.core.database import AsyncSessionLocal
+    from app.modules.auth.rbac import rbac_service
+
+    async with AsyncSessionLocal() as db:
+        try:
+            await rbac_service.seed_permissions(db)
+            await rbac_service.seed_roles(db)
+            log.info("rbac_seeded_successfully")
+        except Exception as e:
+            log.warning("rbac_seeding_skipped", error=str(e))
+
     yield
     log.info("stillmind_api_stopping")
 
@@ -67,6 +97,10 @@ def create_app() -> FastAPI:
     app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
     app.add_middleware(SlowAPIMiddleware)
 
+    # HSTS (Strict-Transport-Security) - only in production
+    if not settings.DEBUG:
+        app.add_middleware(HSTSMiddleware)
+
     # ----------------------------------------------------------------
     # Global exception handlers
     # ----------------------------------------------------------------
@@ -76,6 +110,7 @@ def create_app() -> FastAPI:
             {"field": ".".join(str(l) for l in e["loc"]), "issue": e["msg"]}
             for e in exc.errors()
         ]
+        log.error("validation_error", path=request.url.path, details=details)
         return JSONResponse(
             status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
             content=error_response(

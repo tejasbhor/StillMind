@@ -2,65 +2,79 @@
 
 **StillMind** is a rule-based, explainable mental health triage and resource allocation platform built for educational institutions. The platform normalizes student assessments, computes Composite Risk Indices (CRI), fairly prioritizes waiting students, and intelligently assigns limited counseling slots. 
 
-It is designed with three core principles:
-1. **Explainability over Black Box**: No hidden AI decisions. Every risk level requires absolute clinical traceability.
-2. **Human-in-the-Loop**: Counselors receive smart capacity-matched queues, but retain ultimate override authority over decisions.
-3. **Absolute Privacy**: Strict Role-Based Access Control (RBAC) ensuring Admin, Counselor, and Student boundaries.
+---
+
+## 🏗 System Architecture (Production OCI Pattern)
+
+StillMind is built for high availability and low-resource environments (specifically Oracle Cloud OCI Free Tier):
+
+- **Frontend**: Next.js 15 App Router (Containerized `standalone` output).
+- **Backend API**: FastAPI (Python 3.12) + `uv` + Pydantic (Modular Monolith).
+- **Database**: PostgreSQL 16 (Relational schemas + JSONB explainability vectors).
+- **Async Queueing**: Redis + ARQ (Async Background Tasks).
+- **Reverse Proxy**: Integrated into the **CivicLens Proxy Network** via Caddy.
+- **Native Chat**: ASGI Native `python-socketio` framework.
 
 ---
 
-## 🏗 System Architecture (CIVICLENS production pattern)
+## 🚀 Deployment (Oracle Cloud / OCI)
 
-- **Frontend**: Next.js 15 App Router + TailwindCSS (Multi-stage containerized `standalone` output)
-- **Backend API**: FastAPI (Python 3.12) + `uv` + Pydantic (Modular Monolith)
-- **Database**: PostgreSQL 16 (Relational schemas + JSONB explainability vectors)
-- **Async Queueing**: Redis + ARQ (Async Background Tasks)
-- **Reverse Proxy**: Caddy (Zero-config SSL & internal API routing)
-- **Native Chat**: ASGI Native `python-socketio` framework
+We use a memory-optimized, sequential deployment strategy to maintain stability on low-resource instances.
 
-## 🚀 Getting Started (Docker / OCI Deploy)
-
-This project has been fully dockerized for instant scaling across environments. 
-
-### Prerequisites
-- Docker Engine & Docker Compose
-
-### 1. Boot up the Container Stack
+### 1. Initial Server Setup
+If deploying to a fresh OCI instance, run the initialization script to configure Swap, Firewall, and Docker:
 ```bash
-docker compose up -d --build
+chmod +x scripts/init-server.sh
+sudo ./scripts/init-server.sh
 ```
-This commands spins up:
-1. `caddy` (Proxy manager on port 80/443)
-2. `frontend` (Next.js Application)
-3. `backend` (FastAPI JSON REST API)
-4. `db` (Postgres Database)
-5. `redis` (KV Store for Queues / Sessions)
 
-### 2. Run Database Migrations
-Once the `backend` and `db` are healthy, apply the latest Alembic schema definitions:
+### 2. Environment Configuration
+Create a `.env` file based on the production template:
+```bash
+cp .env.production.example .env
+# Edit .env with your production secrets
+```
+
+### 3. Sequential Deployment
+Use the deployment script to build and start services one-by-one (prevents memory spikes):
+```bash
+chmod +x scripts/deploy.sh
+./scripts/deploy.sh
+```
+
+### 4. Database Setup
+Apply migrations and seed the initial permissions:
 ```bash
 docker compose exec backend uv run alembic upgrade head
-```
-
-### 3. Seed Default Test Data
-Populate the platform with testing accounts across all three RBAC scopes (Student, Counselor, Admin):
-```bash
 docker compose exec backend uv run python scripts/seed_all.py
 ```
-*(Check the script file for default credentials).*
+
+---
+
+## 🌐 Shared Proxy Integration (Caddy)
+
+StillMind co-exists with CivicLens on a shared OCI instance. To route traffic, we use an **Import Pattern** in the main Caddy config:
+
+1. The main `Caddyfile` imports from `/opt/civiclens/sites/*`.
+2. The StillMind config resides in `/opt/civiclens/sites/stillmind`.
+3. Traffic is routed via `stillmind.civiclens.space`.
 
 ---
 
 ## 📚 API Contracts & Documentation
-Once the Docker stack is running, the interactive OpenAPI JSON endpoints are automatically hosted via Swagger UI at:
-👉 **[http://localhost/api/v1/docs](http://localhost/api/v1/docs)**
+Interactive OpenAPI documentation is automatically hosted at:
+👉 **`https://stillmind.civiclens.space/api/v1/docs`**
 
-### Core Monolith Sub-Domains
-* `/api/v1/auth/*`
-* `/api/v1/students/me/*`
-* `/api/v1/counselors/me/*`
-* `/api/v1/admin/*`
-* `/socket.io/*` (Real-time communications)
+### Core Modules
+* `/api/v1/auth/*` — Institutional Auth & RBAC
+* `/api/v1/students/me/*` — Student Progress & Assessments
+* `/api/v1/counselors/me/*` — Counselor Triage & Queue
+* `/api/v1/admin/*` — Institutional Analytics
+* `/socket.io/*` — Real-time Triage Chat
 
-## ☁️ Continuous Deployment
-The repository relies on GitHub Actions. Commits to the `main` branch dynamically trigger `.github/workflows/deploy.yml` which SSH's directly into the target OCI node to handle rolling updates transparently.
+---
+
+## 🛡 Security & Privacy
+- **Explainability**: Every risk level (RED/YELLOW/GREEN) is backed by a clinical reasoning vector stored in JSONB.
+- **Isolation**: Containers are isolated via the `stillmind_internal` bridge network.
+- **RBAC**: Strict role boundaries enforced at the API level (Student, Counselor, Admin).

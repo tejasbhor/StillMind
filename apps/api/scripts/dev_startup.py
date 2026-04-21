@@ -30,6 +30,7 @@ async def reset_and_seed():
         await db.execute(text("DROP TABLE IF EXISTS assessments CASCADE"))
         await db.execute(text("DROP TABLE IF EXISTS student_profiles CASCADE"))
         await db.execute(text("DROP TABLE IF EXISTS counselor_profiles CASCADE"))
+        await db.execute(text("DROP TABLE IF EXISTS organizations CASCADE"))
         await db.execute(text("DROP TABLE IF EXISTS users CASCADE"))
         await db.commit()
         print("==> Database reset complete")

@@ -1,5 +1,6 @@
 from pydantic import BaseModel, Field
-from typing import Dict
+from typing import Dict, Optional
+from datetime import datetime
 
 class AssessmentCreate(BaseModel):
     # PHQ-9 answers (0-3)
@@ -14,8 +15,8 @@ class AssessmentCreate(BaseModel):
     
 class AssessmentStudentView(BaseModel):
     id: str
-    assessment_type: str
-    risk_processing_status: str
-    created_at: str
+    assessment_type: Optional[str] = None
+    risk_processing_status: Optional[str] = None
+    created_at: Optional[datetime] = None
 
     model_config = {"from_attributes": True}

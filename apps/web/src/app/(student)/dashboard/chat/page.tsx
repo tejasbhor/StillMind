@@ -2,12 +2,13 @@
 
 import { useState, useRef, useEffect, useCallback } from "react";
 import { EmptyState } from "@/components/ui/EmptyState";
-import { LoadingState } from "@/components/ui/LoadingState";
+import { LoadingState } from "@/components/ui/Loading";
 import { ErrorState } from "@/components/ui/ErrorState";
 import Button from "@/components/ui/Button";
 import { cn } from "@/utils/cn";
-import { chatApi, tokenStore, type ChatConversation, type ChatMessageItem } from "@/services/api";
+import { chatApi, type ChatConversation, type ChatMessageItem } from "@/services/api";
 import { useSocket } from "@/hooks/use-socket";
+import { useAuthStore } from "@/hooks/auth-store";
 
 function formatTime(iso: string) {
   try {
@@ -18,30 +19,29 @@ function formatTime(iso: string) {
 }
 
 export default function StudentChatPage() {
+  const { user } = useAuthStore();
   const [conversations, setConversations] = useState<ChatConversation[]>([]);
-  const [activeAllocationId, setActiveAllocationId] = useState<string | null>(null);
+  const [activeConversationId, setActiveConversationId] = useState<string | null>(null);
   const [messages, setMessages] = useState<ChatMessageItem[]>([]);
   const [inputValue, setInputValue] = useState("");
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
 
-  const userId = typeof window !== "undefined"
-    ? (() => { try { return JSON.parse(localStorage.getItem("sm_user") || "{}").id; } catch { return ""; } })()
-    : "";
+  const userId = user?.id ?? "";
 
   // Fetch conversations on mount
   useEffect(() => {
     (async () => {
       try {
         const res = await chatApi.getConversations();
-        const convos = (res as any).data as ChatConversation[];
+        const convos = res.data as ChatConversation[];
         setConversations(convos);
         if (convos.length > 0) {
-          setActiveAllocationId(convos[0].allocation_id);
+          setActiveConversationId(convos[0].conversation_id);
         }
-      } catch (err: any) {
-        setError(err.message || "Failed to load conversations");
+      } catch (err: unknown) {
+        setError(err instanceof Error ? err.message : "Failed to load conversations");
       } finally {
         setLoading(false);
       }
@@ -50,16 +50,16 @@ export default function StudentChatPage() {
 
   // Fetch message history when active room changes
   useEffect(() => {
-    if (!activeAllocationId) return;
+    if (!activeConversationId) return;
     (async () => {
       try {
-        const res = await chatApi.getHistory(activeAllocationId);
-        setMessages((res as any).data as ChatMessageItem[]);
+        const res = await chatApi.getHistory(activeConversationId);
+        setMessages(res.data as ChatMessageItem[]);
       } catch {
         // silently ignore — socket will deliver new messages
       }
     })();
-  }, [activeAllocationId]);
+  }, [activeConversationId]);
 
   // Socket.IO connection
   const handleIncomingMessage = useCallback((msg: ChatMessageItem) => {
@@ -71,7 +71,7 @@ export default function StudentChatPage() {
   }, []);
 
   const { connected, sendMessage } = useSocket({
-    allocationId: activeAllocationId ?? undefined,
+    conversationId: activeConversationId ?? undefined,
     onMessage: handleIncomingMessage,
   });
 
@@ -85,7 +85,7 @@ export default function StudentChatPage() {
   const MAX_MESSAGE_LENGTH = 3000;
 
   const handleSend = () => {
-    if (!inputValue.trim() || !activeAllocationId) return;
+    if (!inputValue.trim() || !activeConversationId) return;
     
     // Validate message length
     if (inputValue.length > MAX_MESSAGE_LENGTH) {
@@ -98,7 +98,7 @@ export default function StudentChatPage() {
   };
 
   const activeConvo = conversations.find(
-    (c) => c.allocation_id === activeAllocationId
+    (c) => c.conversation_id === activeConversationId
   );
 
   if (loading) {
@@ -136,7 +136,7 @@ export default function StudentChatPage() {
     );
   }
 
-  const counselorName = activeConvo?.other_party_name || "Your Counselor";
+  const counselorName = activeConvo?.other_party_name || "Care Team";
   const initials = counselorName
     .split(" ")
     .map((n) => n[0])
@@ -226,7 +226,7 @@ export default function StudentChatPage() {
         <p className="mt-3 text-center font-sans text-[10px] text-[#3D5A54]/40 flex items-center justify-between px-2">
           <span className="flex items-center gap-2">
             <span className="w-1.5 h-1.5 rounded-full bg-[#7BA89A]" />
-            This chat is only visible to you and your assigned counsellor.
+            Conversations include authorized members of your care team.
           </span>
           <span className={inputValue.length > MAX_MESSAGE_LENGTH ? "text-[#B03030]" : ""}>
             {inputValue.length}/{MAX_MESSAGE_LENGTH}

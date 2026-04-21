@@ -4,7 +4,7 @@ import { useState, useEffect } from "react";
 import Card from "@/components/ui/Card";
 import Button from "@/components/ui/Button";
 import Input from "@/components/ui/Input";
-import Modal from "@/components/ui/Modal";
+import { Modal } from "@/components/ui/Dialog";
 import { cn } from "@/utils/cn";
 import { adminApi, type AdminCounselor } from "@/services/api";
 
@@ -161,6 +161,8 @@ export default function AdminCounselorsPage() {
           <Input
             id="new-counselor-name"
             label="Full name"
+            floating={false}
+            showFocusLine={false}
             value={newName}
             onChange={(e) => setNewName(e.target.value)}
             placeholder="Dr. Jane Smith"
@@ -168,6 +170,8 @@ export default function AdminCounselorsPage() {
           <Input
             id="new-counselor-email"
             label="Email address"
+            floating={false}
+            showFocusLine={false}
             type="email"
             value={newEmail}
             onChange={(e) => setNewEmail(e.target.value)}
@@ -176,6 +180,8 @@ export default function AdminCounselorsPage() {
           <Input
             id="new-counselor-slots"
             label="Daily slot capacity"
+            floating={false}
+            showFocusLine={false}
             type="number"
             value={newSlots}
             onChange={(e) => setNewSlots(e.target.value)}

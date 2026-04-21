@@ -10,10 +10,14 @@ interface InputProps extends InputHTMLAttributes<HTMLInputElement> {
   hint?: string;
   floating?: boolean;
   shakeOnError?: boolean;
+  showStatusIcon?: boolean;
+  showFocusLine?: boolean;
+  rightElement?: React.ReactNode;
+  containerClassName?: string;
 }
 
 const Input = forwardRef<HTMLInputElement, InputProps>(
-  ({ className, label, error, hint, id, floating = true, shakeOnError = true, value, defaultValue, ...props }, ref) => {
+  ({ className, containerClassName, label, error, hint, id, floating = true, shakeOnError = true, showStatusIcon = true, showFocusLine = true, value, defaultValue, rightElement, ...props }, ref) => {
     const inputId = id ?? label?.toLowerCase().replace(/\s+/g, "-");
     const [isFocused, setIsFocused] = useState(false);
     const [hasValue, setHasValue] = useState(!!value || !!defaultValue);
@@ -35,39 +39,39 @@ const Input = forwardRef<HTMLInputElement, InputProps>(
 
     return (
       <motion.div
-        className="flex flex-col gap-1.5 relative"
+        className={cn("flex flex-col gap-1.5 w-full", containerClassName)}
         animate={shakeTrigger > 0 && error ? { x: [-8, 8, -6, 6, 0] } : {}}
         transition={{ duration: 0.4, ease: "easeInOut" }}
         key={shakeTrigger}
       >
-        <div className="relative">
+        {/* Static Label (non-floating) */}
+        {!floating && label && (
+          <label
+            htmlFor={inputId}
+            className="font-sans text-sm font-semibold text-teal-dark mb-0.5 block"
+          >
+            {label}
+          </label>
+        )}
+
+        <div className="relative w-full">
           {/* Floating Label */}
           {floating && label && (
             <motion.label
               htmlFor={inputId}
               className={cn(
-                "absolute left-4 font-sans font-medium pointer-events-none origin-left transition-colors",
-                isFocused ? "text-[#5C8A7B]" : "text-[#5C7A73]"
+                "absolute left-4 font-sans font-semibold pointer-events-none origin-left transition-colors",
+                isFocused ? "text-sage" : "text-teal/55"
               )}
               animate={{
                 y: isFloating ? -10 : 12,
                 scale: isFloating ? 0.8 : 1,
-                color: isFocused ? "#5C8A7B" : error ? "#B03030" : "#5C7A73",
+                color: isFocused ? "#7BA89A" : error ? "#B03030" : "#5C7A73",
               }}
               transition={{ duration: 0.2, ease: "easeOut" }}
             >
               {label}
             </motion.label>
-          )}
-
-          {/* Static Label (non-floating) */}
-          {!floating && label && (
-            <label
-              htmlFor={inputId}
-              className="font-sans text-sm font-medium text-[#3D5A54] mb-1.5 block"
-            >
-              {label}
-            </label>
           )}
 
           {/* Input Field */}
@@ -86,38 +90,53 @@ const Input = forwardRef<HTMLInputElement, InputProps>(
             }}
             onChange={handleChange}
             className={cn(
-              "w-full rounded-xl border bg-white font-sans text-[0.9375rem] text-[#3D5A54] placeholder:text-[#5C7A73]/50",
-              "transition-all duration-200 outline-none focus:scale-[1.005]",
+              "w-full rounded-xl border bg-white font-sans text-[0.9375rem] text-teal-dark placeholder:text-teal/40",
+              "transition-all duration-200 outline-none focus-visible:outline-none focus-visible:outline-offset-0 focus:scale-[1.003]",
               floating && label ? "pt-5 pb-2.5 px-4" : "px-4 py-2.5",
-              "focus:border-[#5C8A7B] focus:ring-4 focus:ring-[#5C8A7B]/10",
+              "focus:border-sage focus:ring-4 focus:ring-sage/10",
               error
                 ? "border-[#F5B8B8] focus:border-[#B03030] focus:ring-[#B03030]/10"
-                : "border-[#B8D4C0] hover:border-[#9DBFB3]",
+                : "border-mist hover:border-teal-light",
               className
             )}
             {...props}
           />
 
           {/* Focus indicator line */}
-          <motion.div
-            className="absolute bottom-0 left-4 right-4 h-0.5 bg-[#5C8A7B] rounded-full pointer-events-none"
-            initial={{ scaleX: 0, opacity: 0 }}
-            animate={{
-              scaleX: isFocused ? 1 : 0,
-              opacity: isFocused ? 1 : 0,
-            }}
-            transition={{ duration: 0.3, ease: "easeOut" }}
-          />
+          {showFocusLine && (
+            <motion.div
+              className="absolute bottom-0 left-4 right-4 h-0.5 bg-sage rounded-full pointer-events-none"
+              initial={{ scaleX: 0, opacity: 0 }}
+              animate={{
+                scaleX: isFocused ? 1 : 0,
+                opacity: isFocused ? 1 : 0,
+              }}
+              transition={{ duration: 0.3, ease: "easeOut" }}
+            />
+          )}
 
-          {/* Success checkmark */}
+          {/* Right Element (e.g. Password Toggle) */}
+          {rightElement && (
+            <div className={cn(
+              "absolute right-3 flex items-center justify-center top-1/2 -translate-y-1/2",
+              floating && label && "mt-1"
+            )}>
+              {rightElement}
+            </div>
+          )}
+
+          {/* Status Icons */}
           <AnimatePresence>
-            {!error && hasValue && isFocused === false && (
+            {showStatusIcon && !error && hasValue && isFocused === false && !rightElement && (
               <motion.svg
                 initial={{ scale: 0, opacity: 0 }}
                 animate={{ scale: 1, opacity: 1 }}
                 exit={{ scale: 0, opacity: 0 }}
                 transition={{ type: "spring", stiffness: 400, damping: 20 }}
-                className="absolute right-3 top-1/2 -translate-y-1/2 w-5 h-5 text-[#5C8A7B]"
+                className={cn(
+                  "absolute right-3 w-5 h-5 text-sage top-1/2 -translate-y-1/2",
+                  floating && label && "mt-1"
+                )}
                 viewBox="0 0 24 24"
                 fill="none"
                 stroke="currentColor"
@@ -133,14 +152,16 @@ const Input = forwardRef<HTMLInputElement, InputProps>(
             )}
           </AnimatePresence>
 
-          {/* Error icon */}
           <AnimatePresence>
-            {error && (
+            {showStatusIcon && error && !rightElement && (
               <motion.svg
                 initial={{ scale: 0, opacity: 0 }}
                 animate={{ scale: 1, opacity: 1 }}
                 exit={{ scale: 0, opacity: 0 }}
-                className="absolute right-3 top-1/2 -translate-y-1/2 w-5 h-5 text-[#B03030]"
+                className={cn(
+                  "absolute right-3 w-5 h-5 text-[#B03030] top-1/2 -translate-y-1/2",
+                  floating && label && "mt-1"
+                )}
                 viewBox="0 0 24 24"
                 fill="none"
                 stroke="currentColor"
@@ -161,7 +182,7 @@ const Input = forwardRef<HTMLInputElement, InputProps>(
               initial={{ opacity: 0, y: -4 }}
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, y: 4 }}
-              className="font-sans text-xs text-[#3D5A8B] flex items-center gap-1"
+              className="font-sans text-xs text-teal/60 flex items-center gap-1"
             >
               <svg className="w-3 h-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                 <circle cx="12" cy="12" r="10" />

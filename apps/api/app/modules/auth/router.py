@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, status, Request
+from fastapi import APIRouter, Depends, status, Request, Response, Cookie
 from sqlalchemy.ext.asyncio import AsyncSession
 from slowapi import Limiter
 from slowapi.util import get_remote_address
@@ -19,10 +19,37 @@ from app.modules.auth.schemas import (
 )
 from app.modules.auth.service import AuthService
 from app.core.responses import success_response
+from app.core.config import settings
 
 router = APIRouter(prefix="/auth", tags=["Authentication"])
 _svc = AuthService()
 limiter = Limiter(key_func=get_remote_address)
+REFRESH_COOKIE_NAME = "sm_refresh_token"
+
+
+def _is_secure_cookie() -> bool:
+    return settings.ENVIRONMENT.lower() in {"production", "staging"}
+
+
+def _set_refresh_cookie(response: Response, refresh_token: str):
+    response.set_cookie(
+        key=REFRESH_COOKIE_NAME,
+        value=refresh_token,
+        httponly=True,
+        secure=_is_secure_cookie(),
+        samesite="lax",
+        max_age=settings.REFRESH_TOKEN_EXPIRE_DAYS * 24 * 60 * 60,
+        path="/api/v1/auth",
+    )
+
+
+def _clear_refresh_cookie(response: Response):
+    response.delete_cookie(
+        key=REFRESH_COOKIE_NAME,
+        path="/api/v1/auth",
+        samesite="lax",
+        secure=_is_secure_cookie(),
+    )
 
 
 @router.post(
@@ -42,14 +69,14 @@ async def register_student(
 @router.post("/login", response_model=dict, summary="Authenticate any role")
 @limiter.limit("10/minute")
 async def login(
-    request: Request, req: LoginRequest, db: AsyncSession = Depends(get_db)
+    request: Request, response: Response, req: LoginRequest, db: AsyncSession = Depends(get_db)
 ):
     client_ip = _get_client_ip(request)
     result = await _svc.login(db, req, client_ip)
+    _set_refresh_cookie(response, result["refresh_token"])
     return success_response(
         data={
             "access_token": result["access_token"],
-            "refresh_token": result["refresh_token"],
             "token_type": "bearer",
             "user": UserOut.model_validate(result["user"]).model_dump(),
             "session_id": result.get("session_id"),  # New: session tracking
@@ -66,13 +93,26 @@ def _get_client_ip(request: Request) -> str:
 
 
 @router.post("/refresh", response_model=dict, summary="Rotate refresh token")
-async def refresh(req: RefreshRequest, db: AsyncSession = Depends(get_db)):
-    result = await _svc.refresh(db, req)
-    return success_response(data={**result, "token_type": "bearer"})
+async def refresh(
+    request: Request,
+    response: Response,
+    req: RefreshRequest,
+    db: AsyncSession = Depends(get_db),
+    refresh_cookie: str | None = Cookie(default=None, alias=REFRESH_COOKIE_NAME),
+):
+    effective_req = req.model_copy()
+    if not effective_req.refresh_token:
+        effective_req.refresh_token = refresh_cookie
+
+    result = await _svc.refresh(db, effective_req)
+    _set_refresh_cookie(response, result["refresh_token"])
+    return success_response(
+        data={"access_token": result["access_token"], "token_type": "bearer"}
+    )
 
 
 @router.post("/logout", response_model=dict, summary="Revoke session")
-async def logout(user=Depends(get_current_user)):
+async def logout(response: Response, user=Depends(get_current_user)):
     # Invalidate session on logout
     from app.modules.auth.service import _invalidate_user_sessions
     from app.core.security import decode_token
@@ -86,6 +126,7 @@ async def logout(user=Depends(get_current_user)):
     except Exception:
         pass
 
+    _clear_refresh_cookie(response)
     return success_response(message="Logged out successfully")
 
 

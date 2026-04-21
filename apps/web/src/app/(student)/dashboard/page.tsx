@@ -4,7 +4,7 @@ import { useState, useEffect } from "react";
 import Link from "next/link";
 import Card from "@/components/ui/Card";
 import Button from "@/components/ui/Button";
-import { LoadingState } from "@/components/ui/LoadingState";
+import { LoadingState } from "@/components/ui/Loading";
 import { ErrorState } from "@/components/ui/ErrorState";
 import { cn } from "@/utils/cn";
 import { type AllocationStatus } from "@/utils/constants";
@@ -117,12 +117,12 @@ export default function StudentDashboard() {
   const isConfirmed = status === "CONFIRMED";
 
   return (
-    <div className="flex flex-col gap-8 max-w-3xl mx-auto">
+    <div className="flex w-full max-w-none flex-col gap-6 lg:gap-7">
       <div className="animate-fade-up flex flex-col gap-1">
-        <h1 className="font-serif text-[2.4rem] text-[#3D5A54] leading-tight">
+        <h1 className="font-serif text-[2rem] leading-tight text-[#3D5A54] sm:text-[2.25rem] lg:text-[2.4rem]">
           Good morning, {m.full_name?.split(' ')[0] || "there"}.
         </h1>
-        <p className="font-sans font-normal text-[#3D5A54]/75">
+        <p className="font-sans text-sm font-normal text-[#3D5A54]/75 sm:text-base">
           Here's what's on your plate today.
         </p>
       </div>
@@ -138,7 +138,7 @@ export default function StudentDashboard() {
             className="w-3 h-3 rounded-full flex-shrink-0"
             style={{ background: softStyle.dot }}
           />
-          <p className="font-serif text-xl" style={{ color: softStyle.text }}>
+          <p className="font-serif text-lg sm:text-xl" style={{ color: softStyle.text }}>
             {RISK_MESSAGE[riskLevel]}
           </p>
         </div>
@@ -150,8 +150,9 @@ export default function StudentDashboard() {
         </p>
       </Card>
 
+      <div className="grid grid-cols-1 gap-4 lg:grid-cols-12 lg:gap-5">
       {m.next_appointment && (
-        <Card className="animate-fade-up stagger-2" padding="md">
+        <Card className="animate-fade-up stagger-2 lg:col-span-7" padding="md">
           <div className="flex items-start justify-between gap-4 flex-wrap">
             <div className="flex flex-col gap-1">
               <p className="font-sans text-xs font-medium tracking-widest uppercase text-[#7BA89A]">
@@ -198,7 +199,13 @@ export default function StudentDashboard() {
         </Card>
       )}
 
-      <Card className="animate-fade-up stagger-3" padding="md">
+      <Card
+        className={cn(
+          "animate-fade-up stagger-3",
+          m.next_appointment ? "lg:col-span-5" : "lg:col-span-12"
+        )}
+        padding="md"
+      >
         <div className="flex items-center justify-between mb-4">
           <div>
             <p className="font-sans text-xs font-medium tracking-widest uppercase text-[#7BA89A]">Your progress</p>
@@ -218,8 +225,9 @@ export default function StudentDashboard() {
           Abstract trend based on your history. No scores — just direction.
         </p>
       </Card>
+      </div>
 
-      <div className="animate-fade-up stagger-5 grid grid-cols-2 sm:grid-cols-3 gap-3 pb-8">
+      <div className="animate-fade-up stagger-5 grid grid-cols-1 gap-3 pb-4 sm:grid-cols-3 sm:gap-4">
         {[
           { href: "/dashboard/assessment",   label: "Start check-in",    emoji: "✎" },
           { href: "/dashboard/chat",         label: "Message counsellor", emoji: "◎" },
@@ -228,10 +236,13 @@ export default function StudentDashboard() {
           <Link
             key={a.href}
             href={a.href}
-            className="card flex flex-col items-center gap-2 p-5 text-center"
+            className="card flex flex-row items-center justify-between gap-3 p-4 text-left sm:p-5"
           >
-            <span className="text-2xl text-[#7BA89A]">{a.emoji}</span>
-            <span className="font-sans text-sm font-medium text-[#3D5A54]">{a.label}</span>
+            <span className="flex items-center gap-3">
+              <span className="text-xl text-[#7BA89A] sm:text-2xl">{a.emoji}</span>
+              <span className="font-sans text-sm font-medium text-[#3D5A54]">{a.label}</span>
+            </span>
+            <span className="text-teal/35" aria-hidden>→</span>
           </Link>
         ))}
       </div>

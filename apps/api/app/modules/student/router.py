@@ -28,7 +28,11 @@ async def get_profile(
     db: AsyncSession = Depends(get_db),
 ):
     profile = await _svc.get_profile(db, user.id)
-    return success_response(data=StudentProfileOut.model_validate(profile).model_dump())
+    data = StudentProfileOut.model_validate(profile).model_dump()
+    prefs = (profile.consents or {}).get("notification_preferences")
+    if prefs is not None:
+        data["notification_preferences"] = prefs
+    return success_response(data=data)
 
 
 @router.patch("/me/profile", response_model=dict, summary="Update own student profile")
@@ -38,8 +42,12 @@ async def update_profile(
     db: AsyncSession = Depends(get_db),
 ):
     profile = await _svc.update_profile(db, user.id, req)
+    data = StudentProfileOut.model_validate(profile).model_dump()
+    prefs = (profile.consents or {}).get("notification_preferences")
+    if prefs is not None:
+        data["notification_preferences"] = prefs
     return success_response(
-        data=StudentProfileOut.model_validate(profile).model_dump(),
+        data=data,
         message="Profile updated",
     )
 

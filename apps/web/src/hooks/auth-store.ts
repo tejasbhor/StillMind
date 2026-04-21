@@ -5,13 +5,14 @@
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
 import { authApi, type AuthUser, type LoginPayload } from "@/services/api";
+import { tokenStore } from "@/services/api";
 
 interface AuthState {
   user: AuthUser | null;
   isLoading: boolean;
   error: string | null;
   login: (payload: LoginPayload) => Promise<void>;
-  logout: () => void;
+  logout: () => Promise<void>;
   clearError: () => void;
   init: () => Promise<void>;
 }
@@ -36,8 +37,8 @@ export const useAuthStore = create<AuthState>()(
         }
       },
 
-      logout: () => {
-        authApi.logout();
+      logout: async () => {
+        await authApi.logout();
         set({ user: null, error: null });
       },
 
@@ -52,6 +53,28 @@ export const useAuthStore = create<AuthState>()(
             // Invalid stored user, clear it
             localStorage.removeItem("sm_user");
           }
+        }
+
+        // Best-effort: refresh + sync user from backend.
+        // This keeps role/email accurate and supports cookie-based refresh.
+        let token = tokenStore.getAccess();
+        if (!token) {
+          token = await authApi.refresh();
+        }
+        if (!token) {
+          localStorage.removeItem("sm_user");
+          set({ user: null });
+          return;
+        }
+
+        try {
+          const me = await authApi.me();
+          localStorage.setItem("sm_user", JSON.stringify(me));
+          set({ user: me });
+        } catch {
+          // If token is invalid/expired, clear local user (refresh logic will handle redirect).
+          localStorage.removeItem("sm_user");
+          set({ user: null });
         }
       },
 

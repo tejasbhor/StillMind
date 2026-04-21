@@ -1,0 +1,11 @@
+# Terminal 1 - Docker services
+docker compose up -d db redis
+
+# Terminal 2 - Backend (wait for DB to be ready first)
+cd apps\api
+uv run python scripts/dev_startup.py
+uv run uvicorn app.main:app --host 127.0.0.1 --port 8000
+
+# Terminal 3 - Frontend
+cd apps\web
+npm run dev

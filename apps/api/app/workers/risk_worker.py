@@ -97,7 +97,22 @@ async def compute_risk_job(ctx, assessment_id: str):
                 metadata={"risk_level": risk_level, "trend": trend}
             )
             
-            # TODO: If RED, trigger allocation job or priority bump
+            # Expedite triage for high-risk students by running allocation cycle.
+            if risk_level == "RED":
+                redis = ctx.get("redis") if isinstance(ctx, dict) else None
+                if redis:
+                    await redis.enqueue_job("run_allocation_cycle")
+                    log.info(
+                        "compute_risk_job_allocation_enqueued",
+                        assessment_id=assessment_id,
+                        student_id=assessment.student_id,
+                    )
+                else:
+                    log.warning(
+                        "compute_risk_job_no_redis_ctx",
+                        assessment_id=assessment_id,
+                        student_id=assessment.student_id,
+                    )
             
             await db.commit()
             log.info("compute_risk_job_completed", assessment_id=assessment_id, risk_level=risk_level)

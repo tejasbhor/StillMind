@@ -5,20 +5,29 @@
 
 const BASE = process.env.NEXT_PUBLIC_API_URL ?? "/api/v1";
 
-// ── Token helpers (localStorage) ──────────────────────────────────────────────
+export interface ApiEnvelope<T> {
+  data: T;
+  message?: string;
+  meta?: {
+    request_id?: string;
+    timestamp?: string;
+  };
+}
+
+// ── Token helpers (sessionStorage + httpOnly refresh cookie) ──────────────────
 
 export const tokenStore = {
-  getAccess: () => (typeof window !== "undefined" ? localStorage.getItem("sm_token") : null),
-  getRefresh: () => (typeof window !== "undefined" ? localStorage.getItem("sm_refresh_token") : null),
-  setAccess: (t: string) => localStorage.setItem("sm_token", t),
-  setRefresh: (t: string) => localStorage.setItem("sm_refresh_token", t),
-  setTokens: (access: string, refresh: string) => {
-    localStorage.setItem("sm_token", access);
-    localStorage.setItem("sm_refresh_token", refresh);
+  getAccess: () => (typeof window !== "undefined" ? sessionStorage.getItem("sm_token") : null),
+  setAccess: (t: string) => {
+    if (typeof window !== "undefined") sessionStorage.setItem("sm_token", t);
+  },
+  setTokens: (access: string) => {
+    if (typeof window === "undefined") return;
+    sessionStorage.setItem("sm_token", access);
   },
   clear: () => {
-    localStorage.removeItem("sm_token");
-    localStorage.removeItem("sm_refresh_token");
+    if (typeof window === "undefined") return;
+    sessionStorage.removeItem("sm_token");
     localStorage.removeItem("sm_user");
   },
 };
@@ -38,22 +47,18 @@ function onRefreshed(token: string) {
 }
 
 async function doRefreshToken(): Promise<string | null> {
-  const refreshToken = tokenStore.getRefresh();
-  if (!refreshToken) return null;
-
   try {
     const res = await fetch(`${BASE}/auth/refresh`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ refresh_token: refreshToken }),
+      credentials: "include",
+      body: JSON.stringify({}),
     });
     if (!res.ok) throw new Error("Refresh failed");
     const json = await res.json();
     const newAccess = json.data?.access_token;
-    const newRefresh = json.data?.refresh_token;
     if (newAccess) {
       tokenStore.setAccess(newAccess);
-      if (newRefresh) tokenStore.setRefresh(newRefresh);
     }
     return newAccess;
   } catch {
@@ -76,8 +81,21 @@ async function apiFetch<T>(
     ...(options.headers as Record<string, string>),
   };
 
-  const res = await fetch(`${BASE}${path}`, { ...options, headers });
-  const json = await res.json();
+  const requestInit: RequestInit = {
+    ...options,
+    headers,
+    credentials: options.credentials ?? "include",
+  };
+  const res = await fetch(`${BASE}${path}`, requestInit);
+  const text = await res.text();
+  let json: unknown = null;
+  if (text) {
+    try {
+      json = JSON.parse(text);
+    } catch {
+      json = null;
+    }
+  }
 
   // Handle 401 Unauthorized with automatic token refresh
   if (res.status === 401 && retry) {
@@ -107,16 +125,17 @@ async function apiFetch<T>(
   }
 
   if (!res.ok) {
-    throw new Error(json?.error?.message ?? json?.detail ?? "Request failed");
+    const err = json as { error?: { message?: string }; detail?: string } | null;
+    throw new Error(err?.error?.message ?? err?.detail ?? "Request failed");
   }
-  return json;
+  return json as T;
 }
 
 export const api = {
   get: <T>(path: string, options?: RequestInit) => apiFetch<T>(path, { ...options, method: "GET" }),
-  post: <T>(path: string, body?: any, options?: RequestInit) => 
+  post: <T>(path: string, body?: unknown, options?: RequestInit) =>
     apiFetch<T>(path, { ...options, method: "POST", body: body ? JSON.stringify(body) : undefined }),
-  put: <T>(path: string, body?: any, options?: RequestInit) =>
+  put: <T>(path: string, body?: unknown, options?: RequestInit) =>
     apiFetch<T>(path, { ...options, method: "PUT", body: body ? JSON.stringify(body) : undefined }),
   delete: <T>(path: string, options?: RequestInit) => apiFetch<T>(path, { ...options, method: "DELETE" }),
 };
@@ -125,22 +144,67 @@ export const api = {
 
 export interface LoginPayload { email: string; password: string }
 export interface AuthUser  { id: string; email: string; role: "student" | "counselor" | "admin" }
+export interface StudentRegisterPayload {
+  email: string;
+  password: string;
+  full_name: string;
+  college_id?: string;
+  phone?: string;
+}
+
+export interface StudentRegisterResult {
+  user_id: string;
+  role: "student";
+  profile_status: string;
+}
+export interface StudentProfile {
+  full_name: string | null;
+  phone: string | null;
+  guardian_contact?: unknown;
+  version?: number | null;
+  notification_preferences?: {
+    email_enabled: boolean;
+    push_enabled: boolean;
+    appointment_reminders: boolean;
+    message_alerts: boolean;
+    weekly_check_in: boolean;
+  };
+}
+
+export interface StudentRiskSummary {
+  level: string;
+  score: number;
+  trend: string;
+}
+
 export interface LoginResult {
   access_token: string;
-  refresh_token: string;
   token_type: string;
   user: AuthUser;
 }
 
 export const authApi = {
+  registerStudent: async (
+    payload: StudentRegisterPayload
+  ): Promise<StudentRegisterResult> => {
+    const res = await apiFetch<ApiEnvelope<StudentRegisterResult>>(
+      "/auth/register/student",
+      {
+        method: "POST",
+        body: JSON.stringify(payload),
+      }
+    );
+    return res.data;
+  },
+
   login: async (payload: LoginPayload): Promise<LoginResult> => {
-    const res = await apiFetch<{ data: LoginResult }>("/auth/login", {
+    const res = await apiFetch<ApiEnvelope<LoginResult>>("/auth/login", {
       method: "POST",
       body: JSON.stringify(payload),
     });
-    // Store both tokens
-    if (res.data.access_token && res.data.refresh_token) {
-      tokenStore.setTokens(res.data.access_token, res.data.refresh_token);
+    // Store access token in sessionStorage; refresh stays in httpOnly cookie.
+    if (res.data.access_token) {
+      tokenStore.setTokens(res.data.access_token);
     }
     return res.data;
   },
@@ -150,11 +214,16 @@ export const authApi = {
   },
 
   me: async (): Promise<AuthUser> => {
-    const res = await apiFetch<{ data: AuthUser }>("/auth/me");
+    const res = await apiFetch<ApiEnvelope<AuthUser>>("/auth/me");
     return res.data;
   },
 
-  logout: () => {
+  logout: async () => {
+    try {
+      await apiFetch<{ data?: unknown }>("/auth/logout", { method: "POST" }, false);
+    } catch {
+      // Best-effort cookie cleanup server-side; always clear local state.
+    }
     tokenStore.clear();
   },
 };
@@ -163,16 +232,22 @@ export const authApi = {
 
 export const studentApi = {
   // Profile
-  getProfile: () => apiFetch<{ data: any }>("/students/me/profile"),
-  updateProfile: (data: { full_name?: string | null; phone?: string | null; guardian_contact?: any; version?: number | null }) => 
-    apiFetch<{ data: any }>("/students/me/profile", { method: "PATCH", body: JSON.stringify(data) }),
+  getProfile: () => apiFetch<ApiEnvelope<StudentProfile>>("/students/me/profile"),
+  updateProfile: (data: {
+    full_name?: string | null;
+    phone?: string | null;
+    guardian_contact?: unknown;
+    version?: number | null;
+    notification_preferences?: StudentProfile["notification_preferences"];
+  }) =>
+    apiFetch<ApiEnvelope<StudentProfile>>("/students/me/profile", { method: "PATCH", body: JSON.stringify(data) }),
   
   // Consents
   getConsents: () => apiFetch<{ data: any }>("/students/me/consents"),
   submitConsents: (data: any) => apiFetch<{ data: any }>("/students/me/consents", { method: "PUT", body: JSON.stringify(data) }),
   
   // Risk
-  getRiskSummary: () => apiFetch<{ data: { level: string; score: number; trend: string } }>("/students/me/risk-summary"),
+  getRiskSummary: () => apiFetch<ApiEnvelope<StudentRiskSummary>>("/students/me/risk-summary"),
   
   // Assessments
   getAssessments: (limit = 20, offset = 0) => apiFetch<{ data: any[] }>(`/students/me/assessments?limit=${limit}&offset=${offset}`),
@@ -200,7 +275,7 @@ export const counselorApi = {
   getCapacity: () => apiFetch<{ data: any }>("/counselors/me/capacity"),
   
   // Priority Queue
-  getPriorityQueue: () => apiFetch<{ data: any[] }>("/counselors/me/priority-queue"),
+  getPriorityQueue: () => apiFetch<{ data: any[] }>("/counselors/me/dashboard/priority-queue"),
   getWaitlist: () => apiFetch<{ data: any[] }>("/counselors/me/waitlist"),
   
   // Sessions
@@ -239,10 +314,12 @@ export interface AdminDashboard {
 }
 
 export interface AdminCounselor {
+  id?: string;
   counselor_id: string;
   full_name: string;
   email: string;
   max_slots_day: number;
+  max_active_cases?: number;
   is_active: boolean;
   assigned_students: number;
 }
@@ -291,6 +368,14 @@ export const adminApi = {
     apiFetch<any>(`/admin/students?limit=${limit}&offset=${offset}${status ? `&status=${status}` : ''}`),
   getStudent: (studentId: string) => apiFetch<any>(`/admin/students/${studentId}`),
   
+  getOrganization: () => apiFetch<any>("/admin/organization"),
+  updateOrganization: (data: {
+    name?: string;
+    contact_email?: string;
+    settings?: Record<string, unknown>;
+  }) =>
+    apiFetch<any>("/admin/organization", { method: "PATCH", body: JSON.stringify(data) }),
+
   // Configuration - PRD §9.2 & §9.6
   getResourcePolicies: () => apiFetch<any>("/admin/config/resource-policies"),
   updateResourcePolicies: (data: any) => 
@@ -322,10 +407,45 @@ export const adminApi = {
     apiFetch<any>(`/admin/audit-logs?limit=${limit}&offset=${offset}`),
 };
 
+// ── Notifications ─────────────────────────────────────────────────────────────
+
+export interface NotificationItem {
+  id: string;
+  channel: string;
+  template_code: string;
+  payload: Record<string, unknown>;
+  is_read: boolean;
+  status: string;
+  created_at: string;
+}
+
+export const notificationsApi = {
+  list: (params?: { limit?: number; offset?: number; unread_only?: boolean }) => {
+    const q = new URLSearchParams();
+    if (params?.limit != null) q.set("limit", String(params.limit));
+    if (params?.offset != null) q.set("offset", String(params.offset));
+    if (params?.unread_only) q.set("unread_only", "true");
+    const suffix = q.toString() ? `?${q}` : "";
+    return apiFetch<ApiEnvelope<NotificationItem[]>>(`/notifications${suffix}`);
+  },
+  markRead: (notificationId: string) =>
+    apiFetch<ApiEnvelope<{ message?: string }>>(`/notifications/${notificationId}/read`, {
+      method: "POST",
+    }),
+  markAllRead: () =>
+    apiFetch<ApiEnvelope<{ message?: string }>>("/notifications/mark-all-read", {
+      method: "POST",
+    }),
+};
+
 // ── Chat ──────────────────────────────────────────────────────────────────────
 
 export interface ChatConversation {
-  allocation_id: string;
+  conversation_id: string;
+  allocation_id?: string | null;
+  title?: string | null;
+  kind?: "DIRECT" | "GROUP";
+  participants?: Array<{ user_id: string; role: string; name: string }>;
   other_party_name: string | null;
   status: string;
   last_message: {
@@ -345,11 +465,15 @@ export interface ChatMessageItem {
 export const chatApi = {
   getToken: () => apiFetch<any>("/chat/token"),
   getConversations: () => apiFetch<{ data: ChatConversation[] }>("/chat/conversations"),
-  createConversation: () =>
-    apiFetch<any>("/chat/conversations", { method: "POST" }),
-  getHistory: (allocationId: string, limit = 50, offset = 0) =>
+  createConversation: (data: {
+    participant_ids: string[];
+    title?: string;
+    allocation_id?: string;
+    kind?: "DIRECT" | "GROUP";
+  }) => apiFetch<any>("/chat/conversations", { method: "POST", body: JSON.stringify(data) }),
+  getHistory: (conversationId: string, limit = 50, offset = 0) =>
     apiFetch<{ data: ChatMessageItem[] }>(
-      `/chat/rooms/${allocationId}/messages?limit=${limit}&offset=${offset}`
+      `/chat/rooms/${conversationId}/messages?limit=${limit}&offset=${offset}`
     ),
 };
 

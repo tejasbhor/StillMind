@@ -43,7 +43,6 @@ export interface User {
 // ── Auth ─────────────────────────────────────────────────────────────────────
 export interface LoginResponse {
   access_token: string;
-  refresh_token: string;
   token_type: "Bearer";
   expires_in: number;
   user: User;

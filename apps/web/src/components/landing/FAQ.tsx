@@ -1,6 +1,7 @@
 "use client";
 
-import { motion } from "framer-motion";
+import { motion, useScroll, useTransform } from "framer-motion";
+import { useRef } from "react";
 import { fadeUp } from "@/utils/animations";
 
 const faqs = [
@@ -23,8 +24,23 @@ const faqs = [
 ];
 
 export default function FAQ() {
+  const sectionRef = useRef<HTMLElement>(null);
+  const { scrollYProgress } = useScroll({
+    target: sectionRef,
+    offset: ["start end", "end start"],
+  });
+  const yAccent = useTransform(scrollYProgress, [0, 1], [20, -20]);
+
   return (
-    <section id="faq" className="snap-section h-screen flex flex-col items-center justify-center bg-[#FAFAF8] relative overflow-hidden px-6 pt-12">
+    <section
+      ref={sectionRef}
+      id="faq"
+      className="snap-section h-screen flex flex-col items-center justify-center bg-[#FAFAF8] relative overflow-hidden px-6 pt-12"
+    >
+      <motion.div
+        style={{ y: yAccent }}
+        className="pointer-events-none absolute left-[-6rem] top-10 h-64 w-64 rounded-full bg-teal/10 blur-[120px]"
+      />
       <div className="max-w-6xl mx-auto w-full relative z-10">
         <motion.div
           className="mb-8 lg:mb-12 text-center"
@@ -46,15 +62,21 @@ export default function FAQ() {
           {faqs.map((faq, i) => (
             <motion.div
               key={i}
-              className="bg-white rounded-2xl border border-teal/[0.08] overflow-hidden"
+              className="bg-white rounded-2xl border border-teal/[0.08] overflow-hidden hover:shadow-card transition-all duration-300 card-shine"
               variants={fadeUp}
               initial="hidden"
               whileInView="visible"
               viewport={{ once: true, margin: "-40px" }}
               custom={i * 0.1}
+              whileHover={{ y: -2 }}
             >
               <div className="p-5 lg:p-7">
-                <h3 className="font-serif text-xl lg:text-2xl text-teal-dark mb-2">{faq.q}</h3>
+                <div className="mb-3 flex items-center justify-between gap-3">
+                  <h3 className="font-serif text-xl lg:text-2xl text-teal-dark">{faq.q}</h3>
+                  <span className="shrink-0 rounded-full border border-teal/10 bg-teal/[0.03] px-2.5 py-1 font-sans text-[10px] font-black uppercase tracking-widest text-teal/60">
+                    FAQ
+                  </span>
+                </div>
                 <p className="font-sans text-sm md:text-base text-teal/85 leading-relaxed">{faq.a}</p>
               </div>
             </motion.div>

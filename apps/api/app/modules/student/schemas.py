@@ -87,11 +87,22 @@ class GuardianContact(BaseModel):
         return v
 
 
+class NotificationPreferences(BaseModel):
+    """Stored under `student_profiles.consents['notification_preferences']`."""
+
+    email_enabled: bool = True
+    push_enabled: bool = True
+    appointment_reminders: bool = True
+    message_alerts: bool = True
+    weekly_check_in: bool = False
+
+
 class StudentProfileUpdate(BaseModel):
     full_name: Optional[str] = None
     phone: Optional[str] = None
     guardian_contact: Optional[GuardianContact] = None
     version: Optional[int] = None  # For optimistic locking
+    notification_preferences: Optional[NotificationPreferences] = None
 
     @field_validator("full_name")
     @classmethod
@@ -118,6 +129,7 @@ class StudentProfileOut(BaseModel):
     guardian_contact: Optional[dict]
     consent_flag: bool
     version: Optional[int] = None  # For optimistic locking
+    notification_preferences: Optional[dict] = None
 
     model_config = {"from_attributes": True}
 
