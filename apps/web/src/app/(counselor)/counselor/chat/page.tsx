@@ -62,7 +62,7 @@ export default function CounselorChatPage() {
 
   const { connected, sendMessage, joinRoom } = useSocket({
     conversationId: activeConversationId ?? undefined,
-    onMessage: handleIncoming,
+    onMessage: (msg) => handleIncoming(msg as unknown as ChatMessageItem),
   });
 
   useEffect(() => {
