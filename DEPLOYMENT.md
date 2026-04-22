@@ -1,44 +1,61 @@
 # StillMind — Deployment & Infrastructure Playbook
 
-This document tracks the production state and infrastructure details for the StillMind platform.
+This document details the production architecture, networking, and reverse-proxy configuration for StillMind on the OCI (Oracle Cloud) environment.
 
-## 🚀 Production Status
-- **Environment**: Oracle Cloud Infrastructure (OCI)
-- **Primary Domain**: [stillmind.civiclens.space](https://stillmind.civiclens.space)
-- **API Documentation**: [stillmind.civiclens.space/api/v1/docs](https://stillmind.civiclens.space/api/v1/docs)
-- **Last Hardened**: 2026-04-22 (Switched to additive Alembic migrations)
+## 🏗️ System Architecture
 
-## 🏗️ Infrastructure Architecture
-StillMind coexists with the **CivicLens** project on a shared OCI instance.
+StillMind coexists with **CivicLens** on a shared instance. While StillMind has its own isolated Docker stack, it leverages the global CivicLens infrastructure for traffic routing and SSL termination.
 
-### Networking & Proxy
-- **Reverse Proxy**: A shared Caddy instance (running in the CivicLens namespace) handles SSL/HTTPS.
-- **Proxy Configuration**: Located at `/opt/civiclens/sites/stillmind`.
-- **Internal Network**: StillMind services are isolated in `stillmind_internal` but join the `civiclens_civiclens_net` to reach the proxy.
+### 🌐 Networking & Proxying
 
-### Resource Allocation (Limits)
-- **Frontend**: 700MiB RAM
-- **Backend (API)**: 500MiB RAM
-- **PostgreSQL**: 350MiB RAM
-- **Redis**: 100MiB RAM
+The entry point for all traffic is a **Global Caddy Instance** running in the CivicLens namespace.
 
-## 🛠️ Deployment Workflow
+1.  **Traffic Flow**: 
+    `Client ➔ HTTPS (443) ➔ Global Caddy ➔ Internal Bridge ➔ StillMind Stack`
+2.  **Caddy Configuration**:
+    The reverse proxy logic for StillMind is defined at `/opt/civiclens/sites/stillmind` on the OCI instance.
+3.  **Bridge Network**:
+    StillMind containers are attached to the `civiclens_civiclens_net` network. This allows the global Caddy container to reach the StillMind `backend` and `frontend` services by name.
 
-### Standard Update (Non-destructive)
-To update the site without losing data:
-```bash
-cd /opt/stillmind
-sudo bash scripts/cloud-sync.sh
-```
+### 📦 Service Orchestration
 
-### Database Changes
-1.  Locally generate a migration: `uv run alembic revision --autogenerate -m "description"`
-2.  Push migration to GitHub.
-3.  Run `cloud-sync.sh` on the server.
+Services are managed via `docker-compose.yml`. 
 
-### Critical Safety Note
-**DO NOT** run `scripts/dev_startup.py` on the production server unless you explicitly intend to wipe all user data for a factory reset. The standard `cloud-sync.sh` is now safe and additive.
+- **Frontend**: Next.js optimized production build (Node 20-alpine).
+- **Backend**: FastAPI running via Uvicorn (managed by `uv`).
+- **Database**: PostgreSQL 16 with a persistent Docker volume.
+- **Redis**: Redis 7-alpine used for session management, OTP storage (2FA), and caching.
 
-## 💾 System Maintenance
-- **Storage**: The OCI instance has a 50GB boot volume (expandable to 200GB).
-- **Cleanup**: Run `sudo docker system prune -f` periodically to maintain disk space.
+---
+
+## 🛠️ Operational Workflows
+
+### 1. Local-to-Cloud Sync
+The production server uses a "Pull & Rebuild" model.
+- **Trigger**: `sudo bash scripts/cloud-sync.sh`
+- **Actions**: Pulls from `main`, stops services, sequentially rebuilds containers (to manage memory pressure), and applies incremental database migrations via Alembic.
+
+### 2. Database Migrations
+Migrations are **Local-First**:
+1.  Generate migration locally using `alembic revision --autogenerate`.
+2.  Push the resulting file in `apps/api/alembic/versions/` to GitHub.
+3.  The `cloud-sync.sh` script automatically detects and applies new migrations using `alembic upgrade head`.
+
+---
+
+## 🛡️ Production Hardening
+
+- **2FA**: Mandatory for all email/password logins. Codes are stored in Redis with a 5-minute TTL.
+- **Environment Variables**: Managed via a `.env` file on the server (never committed to git).
+- **Resource Limits**: 
+  - Each service has explicit memory limits (defined in `docker-compose.yml`) to prevent OCI OOM (Out of Memory) kills.
+- **SMTP Connectivity**: Uses port 465 with Implicit TLS for maximum reliability from the OCI network.
+
+---
+
+## 📈 Monitoring & Maintenance
+
+- **Logs**: `sudo docker compose logs -f`
+- **Stats**: `docker stats` (Monitor memory/CPU usage)
+- **Disk**: `sudo docker system prune -f` (Crucial for small OCI boot volumes)
+- **Health**: Check the API docs at `/api/v1/docs` to verify backend connectivity.
