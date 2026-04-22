@@ -53,13 +53,6 @@ const CONSENTS = [
 ];
 
 type RegisterData = z.infer<typeof registerSchema>;
-const DEMO_STUDENT = {
-  email: "student@stillmind.edu",
-  password: "student123",
-  full_name: "Demo Student",
-  college_id: "CS2024001",
-  phone: "+91 9876543210",
-};
 
 function RegisterPage() {
   const router = useRouter();
@@ -81,17 +74,6 @@ function RegisterPage() {
     },
   });
 
-  const handleStudentDemoFill = () => {
-    form.setValue("email", DEMO_STUDENT.email, { shouldValidate: true });
-    form.setValue("password", DEMO_STUDENT.password, { shouldValidate: true });
-    form.setValue("confirmPassword", DEMO_STUDENT.password, { shouldValidate: true });
-    form.setValue("full_name", DEMO_STUDENT.full_name, { shouldValidate: true });
-    form.setValue("college_id", DEMO_STUDENT.college_id, { shouldValidate: true });
-    form.setValue("phone", DEMO_STUDENT.phone, { shouldValidate: true });
-    form.setValue("dataUsageConsent", true, { shouldValidate: true });
-    form.setValue("counselingConsent", true, { shouldValidate: true });
-    form.setValue("emergencyEscalationConsent", true, { shouldValidate: true });
-  };
 
   const onInitiateSubmit = async (data: RegisterData) => {
     setLoading(true);
@@ -222,15 +204,12 @@ function RegisterPage() {
                 </div>
               )}
 
-              <div className="flex flex-wrap items-center gap-2 mb-[-6px]">
-                <p className="font-sans text-xs text-teal/60 mr-1">Quick Demo:</p>
-                <button
-                  type="button"
-                  onClick={handleStudentDemoFill}
-                  className="px-3 py-1 font-sans text-xs rounded-full bg-[#E8F2EE] text-teal-dark hover:bg-sage hover:text-white transition-all cursor-pointer"
-                >
-                  Prefill student demo
-                </button>
+              {/* Institutional Hint */}
+              <div className="rounded-xl border border-teal/10 bg-[#F4FAF7] px-4 py-3 flex items-start gap-3 mb-2">
+                <GraduationCap className="h-5 w-5 text-teal mt-0.5 shrink-0" />
+                <p className="font-sans text-xs text-teal/70 leading-relaxed">
+                  <strong>MSSU Students:</strong> Please use your official university email ID to continue and explore.
+                </p>
               </div>
 
               <Input

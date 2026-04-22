@@ -19,11 +19,6 @@ type FormData = z.infer<typeof schema>;
 
 type Role = "student" | "counselor" | "admin";
 
-const DEMO_ACCOUNTS = [
-  { role: "student" as const, label: "Student", email: "student@stillmind.edu", password: "student123" },
-  { role: "counselor" as const, label: "Counselor", email: "counselor@stillmind.edu", password: "counselor123" },
-  { role: "admin" as const, label: "Admin", email: "admin@stillmind.edu", password: "admin123" },
-] as const;
 const ROLE_ICONS = {
   student: GraduationCap,
   counselor: User,
@@ -54,11 +49,6 @@ function LoginForm() {
     resolver: zodResolver(schema),
   });
 
-  const fillDemo = (email: string, password: string, role: Role) => {
-    setSelectedRole(role);
-    setValue("email", email,    { shouldValidate: true });
-    setValue("password", password, { shouldValidate: true });
-  };
 
   const onSubmit = async (data: FormData) => {
     setError(null);
@@ -207,22 +197,14 @@ function LoginForm() {
           );
         })}
       </div>
-
       {/* Form */}
       <form onSubmit={handleSubmit(onSubmit)} className="flex flex-col gap-5" noValidate>
-        {/* Quick Demo Login */}
-        <div className="flex flex-wrap items-center gap-2 mb-[-6px]">
-          <p className="font-sans text-xs text-teal/60 mr-1">Quick Demo:</p>
-          {DEMO_ACCOUNTS.map((a) => (
-            <button
-              key={a.label}
-              type="button"
-              onClick={() => fillDemo(a.email, a.password, a.role)}
-              className="px-3 py-1 font-sans text-xs rounded-full bg-[#E8F2EE] text-teal-dark hover:bg-sage hover:text-white transition-all cursor-pointer"
-            >
-              {a.label}
-            </button>
-          ))}
+        {/* Institutional Hint */}
+        <div className="rounded-xl border border-teal/10 bg-[#F4FAF7] px-4 py-3 flex items-start gap-3 mb-2">
+          <GraduationCap className="h-5 w-5 text-teal mt-0.5 shrink-0" />
+          <p className="font-sans text-xs text-teal/70 leading-relaxed">
+            <strong>MSSU Students:</strong> Please use your official university email ID to continue and explore.
+          </p>
         </div>
 
         <Input
