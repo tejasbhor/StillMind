@@ -7,6 +7,7 @@ Run from `apps/api` with the venv active:
 
 Requires DB migrations applied (tables exist).
 """
+
 import asyncio
 import uuid
 import structlog
@@ -36,22 +37,38 @@ log = structlog.get_logger()
 async def _clear_tables(db) -> None:
     """Delete in FK-safe order (children before parents) if tables exist."""
     tables = [
-        SessionNote, Session, ChatMessage, ChatConversationParticipant,
-        ChatConversation, RiskLog, Notification, AuditLog, Allocation,
-        Assessment, StudentProfile, CounselorProfile, User
+        SessionNote,
+        Session,
+        ChatMessage,
+        ChatConversationParticipant,
+        ChatConversation,
+        RiskLog,
+        Notification,
+        AuditLog,
+        Allocation,
+        Assessment,
+        StudentProfile,
+        CounselorProfile,
+        User,
     ]
-    
+
     for table in tables:
-        async with db.begin_nested():
-            try:
-                await db.execute(delete(table))
-            except Exception as e:
-                # Skip if table doesn't exist yet (UndefinedTable)
-                if "does not exist" in str(e).lower():
-                    log.debug("skipping_clear_table_missing", table=table.__tablename__)
-                else:
-                    raise e
-    await db.flush()
+        try:
+            await db.execute(delete(table))
+            await db.flush()
+        except Exception as e:
+            # Skip if table doesn't exist yet (UndefinedTable)
+            err_msg = str(e).lower()
+            if (
+                "does not exist" in err_msg
+                or "undefinedtable" in err_msg
+                or "relation" in err_msg
+                and "does not exist" in err_msg
+            ):
+                log.debug("skipping_clear_table_missing", table=table.__tablename__)
+                continue
+            else:
+                raise e
 
 
 async def seed_data() -> None:
@@ -60,7 +77,9 @@ async def seed_data() -> None:
     async with AsyncSessionLocal() as db:
         await _clear_tables(db)
 
-        org_row = await db.execute(select(Organization).where(Organization.slug == "mssu"))
+        org_row = await db.execute(
+            select(Organization).where(Organization.slug == "mssu")
+        )
         org = org_row.scalar_one_or_none()
         if not org:
             org = Organization(
@@ -183,7 +202,15 @@ async def seed_data() -> None:
                         "q9": 1,
                     },
                     phq9_total=12,
-                    gad7_scores={"q1": 2, "q2": 2, "q3": 1, "q4": 1, "q5": 1, "q6": 1, "q7": 0},
+                    gad7_scores={
+                        "q1": 2,
+                        "q2": 2,
+                        "q3": 1,
+                        "q4": 1,
+                        "q5": 1,
+                        "q6": 1,
+                        "q7": 0,
+                    },
                     gad7_total=8,
                     q9_flag=False,
                     sleep_score=3,
@@ -207,7 +234,15 @@ async def seed_data() -> None:
                         "q9": 1,
                     },
                     phq9_total=18,
-                    gad7_scores={"q1": 3, "q2": 3, "q3": 2, "q4": 2, "q5": 2, "q6": 2, "q7": 1},
+                    gad7_scores={
+                        "q1": 3,
+                        "q2": 3,
+                        "q3": 2,
+                        "q4": 2,
+                        "q5": 2,
+                        "q6": 2,
+                        "q7": 1,
+                    },
                     gad7_total=15,
                     q9_flag=True,
                     sleep_score=2,
@@ -228,7 +263,11 @@ async def seed_data() -> None:
                     assessment_id=assessment_id,
                     cri_score=0.62,
                     risk_level="YELLOW",
-                    reasoning=["Elevated PHQ-9", "Academic stress", "Sleep disturbance"],
+                    reasoning=[
+                        "Elevated PHQ-9",
+                        "Academic stress",
+                        "Sleep disturbance",
+                    ],
                     trend="STABLE",
                     trigger="ASSESSMENT_SUBMITTED",
                 ),
@@ -238,7 +277,11 @@ async def seed_data() -> None:
                     assessment_id=assessment2_id,
                     cri_score=0.88,
                     risk_level="RED",
-                    reasoning=["Severe depression score", "Positive Q9 safety screen", "High GAD-7"],
+                    reasoning=[
+                        "Severe depression score",
+                        "Positive Q9 safety screen",
+                        "High GAD-7",
+                    ],
                     trend="WORSENING",
                     trigger="ASSESSMENT_SUBMITTED",
                 ),
