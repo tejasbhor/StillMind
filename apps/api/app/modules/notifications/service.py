@@ -183,7 +183,7 @@ async def send_login_code(to_email: str, code: str, name: str = None, expires_mi
     )
 
 
-async def send_password_reset(to_email: str, reset_url: str, name: str, expires_hours: int = 1):
+async def send_password_reset(to_email: str, reset_url: str, name: str = None, expires_hours: int = 1):
     """Send password reset email."""
     await send_templated_email(
         to_email=to_email,
@@ -193,6 +193,22 @@ async def send_password_reset(to_email: str, reset_url: str, name: str, expires_
             "reset_url": reset_url,
             "name": name or to_email.split('@')[0],
             "expires_hours": expires_hours
+        }
+    )
+
+
+async def send_generic_notification(to_email: str, subject: str, message: str, name: str = None, action_url: str = None, action_text: str = None):
+    """Send a generic branded notification."""
+    await send_templated_email(
+        to_email=to_email,
+        template="generic_notification",
+        subject=f"StillMind: {subject}",
+        context={
+            "title": subject,
+            "message": message,
+            "name": name or to_email.split('@')[0],
+            "action_url": action_url,
+            "action_text": action_text
         }
     )
 
@@ -264,13 +280,9 @@ async def dispatch_notification(user_id: str, email: str, template: str, context
         )
     else:
         # Generic notification using template
-        await send_templated_email(
+        await send_generic_notification(
             to_email=email,
-            template="generic_notification",
-            subject="StillMind Notification",
-            context={
-                "title": context.get('title', 'Notification'),
-                "message": str(context),
-                "name": context.get('name')
-            }
+            subject=context.get('title', 'Notification'),
+            message=context.get('message', str(context)),
+            name=context.get('name')
         )
