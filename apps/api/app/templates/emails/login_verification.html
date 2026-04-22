@@ -1,16 +1,16 @@
-{% extends "emails/base.html" %}
+{% extends "base.html" %}
 
 {% block content %}
-<h1>Verify your login</h1>
-<p>Hello {{ name }},</p>
-<p>To complete your sign-in to StillMind, please enter the following verification code:</p>
+<h1>Verify Your Login</h1>
+<p>Hi {{ name | default("there") }},</p>
+<p>To complete your sign-in to StillMind, please use the login verification code below:</p>
 
 <div class="code-box">
     <div class="code">{{ code }}</div>
 </div>
 
 <div class="highlight-box">
-    <p style="margin-bottom: 0;"><strong>Security Note:</strong> This code will expire in {{ expires_minutes }} minutes. If you did not attempt to sign in just now, please change your password immediately.</p>
+    <p style="margin-bottom: 0;"><strong>Security Note:</strong> This code will expire in <strong>{{ expires_minutes | default("5") }} minutes</strong>. If you did not attempt to sign in, please change your password immediately.</p>
 </div>
 
 <p>For your protection, we require this additional step for all institutional account logins.</p>

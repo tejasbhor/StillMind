@@ -169,15 +169,15 @@ async def send_verification_code(to_email: str, code: str, name: str = None, exp
     )
 
 
-async def send_login_code(to_email: str, code: str, name: str, expires_minutes: int = 10):
+async def send_login_code(to_email: str, code: str, name: str = None, expires_minutes: int = 5):
     """Dispatch a login verification code email."""
     await send_templated_email(
         to_email=to_email,
-        subject="StillMind Login Verification Code",
         template="login_verification",
+        subject="StillMind: Your Login Verification Code",
         context={
             "code": code,
-            "name": name,
+            "name": name or to_email.split('@')[0],
             "expires_minutes": expires_minutes,
         }
     )

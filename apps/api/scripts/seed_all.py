@@ -106,7 +106,7 @@ async def seed_data() -> None:
                     id=student_id,
                     organization_id=org_id,
                     email="2023000051@mssu.ac.in",
-                    full_name="John Smith",
+                    full_name="Tejas Bhor",
                     password_hash=hash_password("student123"),
                     role="student",
                     status="ACTIVE",
