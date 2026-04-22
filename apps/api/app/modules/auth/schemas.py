@@ -53,7 +53,7 @@ def sanitize_name(value: Optional[str]) -> Optional[str]:
 
 class StudentRegisterRequest(BaseModel):
     email: EmailStr
-    password: str
+    password: Optional[str] = None
     full_name: str
     college_id: Optional[str] = None
     phone: Optional[str] = None
@@ -63,7 +63,9 @@ class StudentRegisterRequest(BaseModel):
 
     @field_validator("password")
     @classmethod
-    def password_strength(cls, v: str) -> str:
+    def password_strength(cls, v: Optional[str]) -> Optional[str]:
+        if v is None or v == "":
+            return v
         if len(v) < MIN_PASSWORD_LENGTH:
             raise ValueError(
                 f"Password must be at least {MIN_PASSWORD_LENGTH} characters"
