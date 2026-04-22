@@ -16,6 +16,7 @@ class User(Base):
     )
     role: Mapped[str] = mapped_column(SAEnum("student", "counselor", "admin", "system", name="user_role"), nullable=False)
     email: Mapped[str] = mapped_column(String(255), unique=True, nullable=False, index=True)
+    full_name: Mapped[str | None] = mapped_column(String(255), nullable=True)
     password_hash: Mapped[str | None] = mapped_column(String(512), nullable=True)
     google_id: Mapped[str | None] = mapped_column(String(100), unique=True, nullable=True, index=True)
     avatar_url: Mapped[str | None] = mapped_column(String(512), nullable=True)

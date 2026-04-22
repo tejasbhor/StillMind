@@ -86,31 +86,48 @@ def _get_client_ip(request=None) -> str:
 
 
 class AuthService:
-    async def _resolve_registration_org_id(
+    async def _resolve_registration_org(
         self, db: AsyncSession, req: StudentRegisterRequest
-    ) -> str:
+    ) -> Organization:
         if getattr(req, "organization_slug", None):
             slug = req.organization_slug.strip().lower()
-            r = await db.execute(select(Organization.id).where(Organization.slug == slug))
-            oid = r.scalar_one_or_none()
-            if oid:
-                return oid
+            r = await db.execute(select(Organization).where(Organization.slug == slug))
+            org = r.scalar_one_or_none()
+            if org:
+                return org
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
                 detail="Unknown organization. Check your signup link or contact support.",
             )
-        r = await db.execute(select(Organization.id).where(Organization.slug == "default"))
-        d = r.scalar_one_or_none()
-        if d:
-            return d
-        r = await db.execute(select(Organization.id).limit(1))
-        any_org = r.scalar_one_or_none()
-        if not any_org:
+        r = await db.execute(select(Organization).where(Organization.slug == "default"))
+        org = r.scalar_one_or_none()
+        if org:
+            return org
+        r = await db.execute(select(Organization).limit(1))
+        org = r.scalar_one_or_none()
+        if not org:
             raise HTTPException(
                 status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
                 detail="No organization is configured for this deployment.",
             )
-        return any_org
+        return org
+
+    async def _log_security_event(
+        self, 
+        db: AsyncSession, 
+        action: str, 
+        user_id: Optional[str] = None, 
+        metadata: Optional[dict] = None
+    ):
+        """Helper to create an audit log entry for security events."""
+        from app.models.audit_log import AuditLog
+        log_entry = AuditLog(
+            actor_id=user_id,
+            action=action,
+            metadata_=metadata or {}
+        )
+        db.add(log_entry)
+        await db.flush()
 
     # ------------------------------------------------------------------
     # Register student with idempotency and duplicate detection
@@ -120,6 +137,24 @@ class AuthService:
     ) -> dict:
         # Sanitize inputs
         email = req.email.lower().strip()
+        full_name = sanitize_name(req.full_name)
+
+        # 1. Resolve Org and Check Domain Policy
+        org = await self._resolve_registration_org(db, req)
+        if org.domain:
+            allowed_domain = org.domain.lower().strip()
+            user_domain = email.split("@")[-1]
+            if user_domain != allowed_domain:
+                await self._log_security_event(
+                    db, 
+                    "REGISTRATION_DOMAIN_REJECTED", 
+                    metadata={"email": email, "expected": allowed_domain}
+                )
+                logger.warning("registration_domain_mismatch", email=email, expected=allowed_domain)
+                raise HTTPException(
+                    status_code=status.HTTP_403_FORBIDDEN,
+                    detail=f"Registration is restricted to {allowed_domain} email addresses."
+                )
 
         # Check for existing user (case-insensitive)
         existing = await db.execute(select(User).where(func.lower(User.email) == email))
@@ -132,7 +167,6 @@ class AuthService:
 
         user_id = str(uuid.uuid4())
         profile_id = str(uuid.uuid4())
-        org_id = await self._resolve_registration_org_id(db, req)
 
         # Standard registration requires a password
         if not req.password:
@@ -144,15 +178,16 @@ class AuthService:
         try:
             user = User(
                 id=user_id,
-                organization_id=org_id,
+                organization_id=org.id,
                 role="student",
                 email=email,
+                full_name=full_name,
                 password_hash=hash_password(req.password),
             )
             profile = StudentProfile(
                 id=profile_id,
                 user_id=user_id,
-                full_name=sanitize_name(req.full_name),
+                full_name=full_name,
                 college_id=sanitize_input(req.college_id),
                 phone=sanitize_input(req.phone),
                 profile_status="PENDING_CONSENT",
@@ -160,6 +195,14 @@ class AuthService:
 
             db.add(user)
             db.add(profile)
+            
+            await self._log_security_event(
+                db, 
+                "STUDENT_REGISTERED", 
+                user_id=user_id,
+                metadata={"email": email, "org_id": org.id}
+            )
+            
             await db.commit()
 
             logger.info(
@@ -210,6 +253,11 @@ class AuthService:
             _failed_login_attempts[lockout_key] = failed_attempts + 1
 
             if failed_attempts + 1 >= LOCKOUT_THRESHOLD:
+                await self._log_security_event(
+                    db, 
+                    "ACCOUNT_LOCKOUT", 
+                    metadata={"email": email, "ip": client_ip}
+                )
                 logger.warning(
                     "account_locked",
                     email_hash=hash(email[:3]),
@@ -355,6 +403,8 @@ class AuthService:
         return {
             "id": user.id,
             "email": user.email,
+            "full_name": user.full_name,
+            "avatar_url": user.avatar_url,
             "role": user.role,
             "status": user.status,
             "profile_complete": profile_complete,
@@ -452,42 +502,54 @@ class AuthService:
         full_name = user_info.get("name", "Google User")
         avatar_url = user_info.get("picture")
 
-        # 1. Try to find user by google_id
+        # 1. Strict Domain Validation (Production Grade)
+        domain = email.split('@')[-1].lower() if '@' in email else None
+        if not domain:
+            raise HTTPException(status_code=400, detail="Invalid email format")
+
+        # Try to find org by domain
+        r = await db.execute(select(Organization).where(Organization.domain == domain))
+        org = r.scalar_one_or_none()
+        
+        if not org:
+            await self._log_security_event(
+                db, 
+                "GOOGLE_AUTH_DOMAIN_REJECTED", 
+                metadata={"email": email, "domain": domain}
+            )
+            logger.warning("google_auth_domain_rejected", email=email, domain=domain)
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN, 
+                detail=f"Login restricted to authorized institutional accounts. Domain {domain} is not permitted."
+            )
+        
+        org_id = org.id
+
+        # 2. Try to find user by google_id
         result = await db.execute(select(User).where(User.google_id == google_id))
         user = result.scalar_one_or_none()
 
         if not user:
-            # 2. Try to find user by email
+            # 3. Try to find user by email
             result = await db.execute(select(User).where(func.lower(User.email) == email))
             user = result.scalar_one_or_none()
 
             if user:
                 # Link google_id to existing user
                 user.google_id = google_id
+                user.full_name = full_name
                 if not user.avatar_url:
                     user.avatar_url = avatar_url
             else:
-                # 3. Create new user
+                # 4. Create new user
                 user_id = str(uuid.uuid4())
-                
-                # Extract domain for institutional isolation
-                domain = email.split('@')[-1].lower() if '@' in email else None
-                org_id = None
-                
-                if domain:
-                    # Try to find org by domain
-                    r = await db.execute(select(Organization.id).where(Organization.domain == domain))
-                    org_id = r.scalar_one_or_none()
-                
-                if not org_id:
-                    # Fallback to standard resolution (using org_slug from session if available)
-                    org_id = await self._resolve_registration_org_id(db, StudentRegisterRequest(email=email, full_name=full_name, organization_slug=org_slug))
                 
                 user = User(
                     id=user_id,
                     organization_id=org_id,
                     role=role,
                     email=email,
+                    full_name=full_name,
                     google_id=google_id,
                     avatar_url=avatar_url,
                     password_hash="", # No password for Google users
@@ -497,10 +559,16 @@ class AuthService:
                 
                 # 4. Create role-specific profile
                 if role == "student":
+                    # For MSSU, try to extract eligibility number from email
+                    college_id = None
+                    if domain == "mssu.ac.in" and "@" in email:
+                        college_id = email.split("@")[0]
+                    
                     profile = StudentProfile(
                         id=str(uuid.uuid4()),
                         user_id=user_id,
                         full_name=full_name,
+                        college_id=college_id,
                         profile_status="ACTIVE", # Auto-activate Google users
                     )
                     db.add(profile)

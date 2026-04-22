@@ -168,6 +168,8 @@ class ResetPasswordRequest(BaseModel):
 class UserOut(BaseModel):
     id: str
     email: str
+    full_name: Optional[str] = None
+    avatar_url: Optional[str] = None
     role: str
     status: str
 
@@ -196,6 +198,8 @@ class RefreshResponse(BaseModel):
 class MeResponse(BaseModel):
     id: str
     email: str
+    full_name: Optional[str] = None
+    avatar_url: Optional[str] = None
     role: str
     status: str
     profile_complete: bool

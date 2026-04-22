@@ -113,7 +113,18 @@ export default function RegisterPage() {
 
       router.push("/dashboard/assessment");
     } catch (e: any) {
-      setError(e?.message || "Registration failed. Please try again.");
+      const msg = e?.message || "";
+      if (msg.includes("restricted to")) {
+        setError(
+          `${msg} Please use your institutional Google account to sign up instead.`
+        );
+      } else if (msg.toLowerCase().includes("already exists")) {
+        setError(
+          "An account with this email already exists. Try signing in instead."
+        );
+      } else {
+        setError(msg || "Registration failed. Please try again.");
+      }
     } finally {
       setLoading(false);
     }

@@ -72,7 +72,9 @@ function HeaderAccountMenu() {
   const { user, logout } = useAuthStore();
 
   const displayName =
-    user?.email?.split("@")[0]?.replace(/\./g, " ")?.trim() || "Account";
+    user?.full_name ||
+    user?.email?.split("@")[0]?.replace(/\./g, " ")?.trim() ||
+    "Account";
   const initials = (displayName[0] || "U").toUpperCase();
 
   const profileHref =

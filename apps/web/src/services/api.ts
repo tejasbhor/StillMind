@@ -143,7 +143,13 @@ export const api = {
 // ── Auth ──────────────────────────────────────────────────────────────────────
 
 export interface LoginPayload { email: string; password: string }
-export interface AuthUser  { id: string; email: string; role: "student" | "counselor" | "admin" }
+export interface AuthUser  { 
+  id: string; 
+  email: string; 
+  full_name?: string | null;
+  avatar_url?: string | null;
+  role: "student" | "counselor" | "admin" 
+}
 export interface StudentRegisterPayload {
   email: string;
   password: string;
