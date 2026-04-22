@@ -16,8 +16,8 @@ export default function AboutPage() {
       <CustomCursor />
       <Navbar />
 
-      <main className="pt-28 lg:pt-36 pb-20 px-6">
-        <div className="max-w-6xl mx-auto w-full">
+      <main className="min-h-screen pt-28 lg:pt-36 pb-20 px-6">
+        <div className="max-w-[1440px] mx-auto w-full">
           <section className="rounded-[2rem] border border-teal/10 bg-white/75 backdrop-blur-xl shadow-soft px-6 md:px-10 py-10 md:py-14">
             <div className="max-w-4xl space-y-6">
               <span className="font-sans text-[11px] font-black uppercase tracking-[0.22em] text-teal/60">

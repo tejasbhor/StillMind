@@ -16,8 +16,8 @@ export default function CookieNoticePage() {
       <Navbar />
 
       <main className="min-h-screen pt-32 lg:pt-40 pb-20 px-6">
-        <div className="max-w-6xl mx-auto w-full space-y-8">
-          <section className="rounded-3xl border border-teal/10 bg-white/75 backdrop-blur-xl shadow-soft p-7 md:p-10">
+        <div className="max-w-[1440px] mx-auto w-full space-y-8">
+          <section id="definition" className="rounded-3xl border border-teal/10 bg-white/75 backdrop-blur-xl shadow-soft p-7 md:p-10">
             <div className="flex flex-col gap-4">
               <span className="font-sans text-[11px] font-black uppercase tracking-[0.22em] text-teal/60">
                 Cookie Notice
@@ -37,7 +37,7 @@ export default function CookieNoticePage() {
             </div>
           </section>
 
-          <section className="grid lg:grid-cols-2 gap-6">
+          <section id="purpose" className="grid lg:grid-cols-2 gap-6">
             <article className="rounded-3xl border border-teal/10 bg-white p-7 md:p-9">
               <h2 className="font-serif text-3xl text-teal-dark tracking-tight mb-4">
                 What are cookies?
@@ -69,7 +69,7 @@ export default function CookieNoticePage() {
             </article>
           </section>
 
-          <section className="rounded-3xl border border-teal/10 bg-white p-7 md:p-9">
+          <section id="categories" className="rounded-3xl border border-teal/10 bg-white p-7 md:p-9">
             <h2 className="font-serif text-3xl text-teal-dark tracking-tight mb-5">
               Cookie categories
             </h2>
@@ -102,7 +102,7 @@ export default function CookieNoticePage() {
             </div>
           </section>
 
-          <section className="rounded-3xl border border-teal/10 bg-white p-7 md:p-9">
+          <section id="choices" className="rounded-3xl border border-teal/10 bg-white p-7 md:p-9">
             <h2 className="font-serif text-3xl text-teal-dark tracking-tight mb-4">
               Your choices
             </h2>
@@ -113,7 +113,7 @@ export default function CookieNoticePage() {
             </p>
           </section>
 
-          <section className="rounded-3xl border border-teal/10 bg-teal p-7 md:p-10 text-foam">
+          <section id="contact" className="rounded-3xl border border-teal/10 bg-teal p-7 md:p-10 text-foam">
             <h2 className="font-serif text-3xl md:text-4xl tracking-tight mb-4">
               Questions about cookies?
             </h2>

@@ -33,6 +33,7 @@ export const NAV_CONFIG: Record<string, NavItem[]> = {
   ],
   "/terms": [
     { label: "Eligibility", href: "#eligibility" },
+    { label: "Accounts", href: "#accounts" },
     { label: "Service", href: "#service" },
     { label: "Conduct", href: "#conduct" },
     { label: "Billing", href: "#billing" },
@@ -47,6 +48,19 @@ export const NAV_CONFIG: Record<string, NavItem[]> = {
     { label: "Compliance", href: "#compliance" },
     { label: "Infrastructure", href: "#infra" },
     { label: "Contact", href: "#contact" },
+  ],
+  "/cookies": [
+    { label: "Definition", href: "#definition" },
+    { label: "Purpose", href: "#purpose" },
+    { label: "Categories", href: "#categories" },
+    { label: "Choices", href: "#choices" },
+    { label: "Contact", href: "#contact" },
+  ],
+  "/privacy-requests": [
+    { label: "Types", href: "#types" },
+    { label: "Context", href: "#context" },
+    { label: "Submit", href: "#submit" },
+    { label: "Verification", href: "#verification" },
   ],
 };
 

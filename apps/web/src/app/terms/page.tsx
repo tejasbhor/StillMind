@@ -20,8 +20,8 @@ export default function TermsPage() {
       <CustomCursor />
       <Navbar />
 
-      <main className="relative pt-32 pb-24">
-        <Container size="6xl">
+      <main className="relative min-h-screen pt-32 pb-24">
+        <Container size="xl">
           <motion.div 
             variants={staggerContainer}
             initial="hidden"

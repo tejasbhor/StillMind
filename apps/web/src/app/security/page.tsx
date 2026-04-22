@@ -16,8 +16,8 @@ export default function SecurityPage() {
       <CustomCursor />
       <Navbar />
 
-      <main className="pt-32 pb-24 lg:pt-40 lg:pb-32">
-        <Container size="6xl">
+      <main className="min-h-screen pt-32 pb-24 lg:pt-40 lg:pb-32">
+        <Container size="xl">
           <Section spacing="sm">
             <h1 className="font-serif text-4xl md:text-5xl lg:text-6xl text-teal-dark mb-6 tracking-tight">
               Security & Trust

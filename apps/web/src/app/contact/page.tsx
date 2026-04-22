@@ -16,7 +16,7 @@ export default function ContactPage() {
       <Navbar />
 
       <main className="min-h-screen pt-32 lg:pt-40 pb-20 px-6">
-        <div className="max-w-6xl mx-auto w-full space-y-8">
+        <div className="max-w-[1440px] mx-auto w-full space-y-8">
           <section className="rounded-3xl border border-teal/10 bg-white p-7 md:p-10">
             <span className="font-sans text-[11px] font-black uppercase tracking-[0.22em] text-teal/60">
               Contact StillMind

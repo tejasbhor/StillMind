@@ -17,7 +17,7 @@ export default function PrivacyRequestsPage() {
       <Navbar />
 
       <main className="min-h-screen pt-32 lg:pt-40 pb-20 px-6">
-        <div className="max-w-6xl mx-auto w-full space-y-8">
+        <div className="max-w-[1440px] mx-auto w-full space-y-8">
           <section className="rounded-3xl border border-teal/10 bg-white/75 backdrop-blur-xl shadow-soft p-7 md:p-10">
             <span className="font-sans text-[11px] font-black uppercase tracking-[0.22em] text-teal/60">
               Privacy Rights
@@ -37,7 +37,7 @@ export default function PrivacyRequestsPage() {
             </div>
           </section>
 
-          <section className="grid lg:grid-cols-2 gap-6">
+          <section id="types" className="grid lg:grid-cols-2 gap-6">
             <article className="rounded-3xl border border-teal/10 bg-white p-7 md:p-9">
               <h2 className="font-serif text-3xl text-teal-dark tracking-tight mb-4">Common request types</h2>
               <ul className="space-y-3">
@@ -55,7 +55,7 @@ export default function PrivacyRequestsPage() {
               </ul>
             </article>
 
-            <article className="rounded-3xl border border-teal/10 bg-white p-7 md:p-9">
+            <article id="context" className="rounded-3xl border border-teal/10 bg-white p-7 md:p-9">
               <h2 className="font-serif text-3xl text-teal-dark tracking-tight mb-4">Important context</h2>
               <p className="font-sans text-teal/80 leading-relaxed">
                 StillMind is often made available by an institution. In some cases, requests may need to be coordinated
@@ -68,7 +68,7 @@ export default function PrivacyRequestsPage() {
             </article>
           </section>
 
-          <section className="rounded-3xl border border-teal/10 bg-white p-7 md:p-9">
+          <section id="submit" className="rounded-3xl border border-teal/10 bg-white p-7 md:p-9">
             <h2 className="font-serif text-3xl text-teal-dark tracking-tight mb-4">How to submit a request</h2>
             <div className="grid md:grid-cols-3 gap-4">
               {[
@@ -109,7 +109,7 @@ export default function PrivacyRequestsPage() {
             </div>
           </section>
 
-          <section className="rounded-3xl border border-teal/10 bg-teal p-7 md:p-10 text-foam">
+          <section id="verification" className="rounded-3xl border border-teal/10 bg-teal p-7 md:p-10 text-foam">
             <h2 className="font-serif text-3xl md:text-4xl tracking-tight mb-4">
               Verification and response
             </h2>
