@@ -173,6 +173,16 @@ class RegisterVerifyRequest(BaseModel):
         return v.lower().strip()
 
 
+class LoginVerifyRequest(BaseModel):
+    email: EmailStr
+    code: str
+
+    @field_validator("email")
+    @classmethod
+    def normalize_email(cls, v: str) -> str:
+        return v.lower().strip()
+
+
 # ---------------------------------------------------------------------------
 # Responses
 # ---------------------------------------------------------------------------
@@ -202,9 +212,11 @@ class RegistrationInitiatedResponse(BaseModel):
 
 
 class LoginResponse(BaseModel):
-    access_token: str
+    requires_2fa: bool = False
+    message: Optional[str] = None
+    access_token: Optional[str] = None
     token_type: str = "bearer"
-    user: UserOut
+    user: Optional[UserOut] = None
     session_id: Optional[str] = None
     scopes: Optional[str] = None  # Space-separated permissions for reference
 

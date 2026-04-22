@@ -37,6 +37,7 @@ from app.modules.auth.schemas import (
 from app.modules.notifications.service import (
     send_email,
     send_verification_code,
+    send_login_code,
     send_password_reset,
 )
 from app.core.redis import redis_client
@@ -404,32 +405,93 @@ class AuthService:
                 detail="This account has been deactivated. Contact support.",
             )
 
-        # Generate session ID and track active session
+        # 2FA Enforcement for non-Google login
+        import random
+        code = f"{random.randint(100000, 999999)}"
+        
+        # Store login state in Redis (valid for 5 mins)
+        login_verify_key = f"login_verify:{email}"
+        # We store minimal data needed to complete the login
+        await redis_client.set_json(login_verify_key, {
+            "user_id": user.id,
+            "code": code,
+            "attempts": 0
+        }, expire=300) # 5 mins
+        
+        # Send login code email
+        await send_login_code(
+            to_email=email,
+            code=code,
+            name=user.full_name or "User",
+            expires_minutes=5
+        )
+        
+        logger.info("login_2fa_initiated", user_id=user.id, email_hash=hash(email[:3]))
+
+        return {
+            "requires_2fa": True,
+            "message": "Verification code sent to your email",
+            "full_name": user.full_name or "User",
+            "email": email
+        }
+
+    async def verify_login(
+        self, db: AsyncSession, email: str, code: str
+    ) -> dict:
+        """Verify 2FA code and complete login."""
+        login_verify_key = f"login_verify:{email}"
+        stored_data = await redis_client.get_json(login_verify_key)
+        
+        if not stored_data:
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="Login session expired or invalid. Please try again."
+            )
+            
+        if stored_data["code"] != code:
+            stored_data["attempts"] += 1
+            if stored_data["attempts"] >= 3:
+                await redis_client.delete(login_verify_key)
+                raise HTTPException(
+                    status_code=status.HTTP_401_UNAUTHORIZED,
+                    detail="Too many failed attempts. Please try again."
+                )
+            await redis_client.set_json(login_verify_key, stored_data, expire=300)
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="Invalid verification code."
+            )
+
+        # Success!
+        user_id = stored_data["user_id"]
+        result = await db.execute(select(User).where(User.id == user_id))
+        user = result.scalar_one_or_none()
+        
+        if not user or user.status != "ACTIVE":
+             raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="User not found or inactive."
+            )
+
+        # Cleanup Redis
+        await redis_client.delete(login_verify_key)
+
+        # Generate tokens
         session_id = _generate_session_id()
-
-        # Simple: start fresh each login (single session enforcement)
         _active_sessions[user.id] = session_id
-
-        # Get permissions/scopes from RBAC service
+        
         scopes = await rbac_service.get_user_scopes(db, user)
         scopes_list = scopes.split() if scopes else []
 
-        # Include session_id and scopes in token for validation
         token_data = {"sub": user.id, "role": user.role, "session_id": session_id}
         access_token = create_access_token(token_data, scopes=scopes_list)
-        refresh_token_data = {
-            "sub": user.id,
-            "role": user.role,
-            "session_id": session_id,
-        }
-        refresh_token = create_refresh_token(refresh_token_data, scopes=scopes_list)
+        refresh_token = create_refresh_token(token_data, scopes=scopes_list)
 
         logger.info(
-            "login_success",
+            "login_completed",
             user_id=user.id,
             role=user.role,
-            session_id=session_id,
-            scopes=scopes,
+            session_id=session_id
         )
 
         return {
@@ -437,7 +499,7 @@ class AuthService:
             "refresh_token": refresh_token,
             "user": user,
             "session_id": session_id,
-            "scopes": scopes,  # Include scopes in response for reference
+            "scopes": scopes,
         }
 
     # ------------------------------------------------------------------

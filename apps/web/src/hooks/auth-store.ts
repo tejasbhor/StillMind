@@ -11,7 +11,8 @@ interface AuthState {
   user: AuthUser | null;
   isLoading: boolean;
   error: string | null;
-  login: (payload: LoginPayload) => Promise<void>;
+  login: (payload: LoginPayload) => Promise<any>;
+  verifyLogin: (email: string, code: string) => Promise<void>;
   setAuth: (user: AuthUser) => void;
   logout: () => Promise<void>;
   clearError: () => void;
@@ -29,11 +30,31 @@ export const useAuthStore = create<AuthState>()(
         set({ isLoading: true, error: null });
         try {
           const result = await authApi.login(payload);
-          // Tokens already stored by authApi.login
-          localStorage.setItem("sm_user", JSON.stringify(result.user));
-          set({ user: result.user, isLoading: false });
+          // If 2FA is required, we don't set the user yet
+          if (!result.requires_2fa && result.user) {
+            localStorage.setItem("sm_user", JSON.stringify(result.user));
+            set({ user: result.user });
+          }
+          set({ isLoading: false });
+          return result;
         } catch (err: any) {
           set({ error: err.message ?? "Login failed", isLoading: false });
+          throw err;
+        }
+      },
+
+      verifyLogin: async (email, code) => {
+        set({ isLoading: true, error: null });
+        try {
+          const result = await authApi.verifyLogin(email, code);
+          if (result.user) {
+            localStorage.setItem("sm_user", JSON.stringify(result.user));
+            set({ user: result.user, isLoading: false });
+          } else {
+            throw new Error("Verification failed: User data missing");
+          }
+        } catch (err: any) {
+          set({ error: err.message ?? "Verification failed", isLoading: false });
           throw err;
         }
       },

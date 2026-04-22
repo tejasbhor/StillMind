@@ -184,9 +184,12 @@ export interface StudentRiskSummary {
 }
 
 export interface LoginResult {
-  access_token: string;
-  token_type: string;
-  user: AuthUser;
+  requires_2fa?: boolean;
+  message?: string;
+  email?: string;
+  access_token?: string;
+  token_type?: string;
+  user?: AuthUser;
 }
 
 export const authApi = {
@@ -235,7 +238,18 @@ export const authApi = {
       method: "POST",
       body: JSON.stringify(payload),
     });
-    // Store access token in sessionStorage; refresh stays in httpOnly cookie.
+    // Store access token if returned (bypass 2FA or Google)
+    if (res.data.access_token) {
+      tokenStore.setTokens(res.data.access_token);
+    }
+    return res.data;
+  },
+
+  verifyLogin: async (email: string, code: string): Promise<LoginResult> => {
+    const res = await apiFetch<ApiEnvelope<LoginResult>>("/auth/login/verify", {
+      method: "POST",
+      body: JSON.stringify({ email, code }),
+    });
     if (res.data.access_token) {
       tokenStore.setTokens(res.data.access_token);
     }

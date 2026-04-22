@@ -42,9 +42,13 @@ function LoginForm() {
   const expired = searchParams.get("expired") === "1";
 
   const [selectedRole, setSelectedRole] = useState<Role>("student");
+  const [is2FA, setIs2FA] = useState(false);
+  const [tempEmail, setTempEmail] = useState("");
+  const [tempName, setTempName] = useState("");
+  const [verificationCode, setVerificationCode] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const { login, isLoading } = useAuthStore();
+  const { login, verifyLogin, isLoading } = useAuthStore();
 
   const { register, handleSubmit, setValue, formState: { errors } } = useForm<FormData>({
     resolver: zodResolver(schema),
@@ -59,7 +63,15 @@ function LoginForm() {
   const onSubmit = async (data: FormData) => {
     setError(null);
     try {
-      await login({ email: data.email, password: data.password });
+      const result = await login({ email: data.email, password: data.password });
+      
+      if (result.requires_2fa) {
+        setIs2FA(true);
+        setTempEmail(data.email);
+        setTempName(result.full_name || "User");
+        return;
+      }
+
       const stored = localStorage.getItem("sm_user");
       const user   = stored ? JSON.parse(stored) : null;
       if (user?.role && user.role !== selectedRole) {
@@ -73,6 +85,29 @@ function LoginForm() {
     }
   };
 
+  const onVerifySubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!verificationCode || verificationCode.length < 6) {
+      setError("Please enter the 6-digit verification code.");
+      return;
+    }
+    setError(null);
+    try {
+      await verifyLogin(tempEmail, verificationCode);
+      const stored = localStorage.getItem("sm_user");
+      const user = stored ? JSON.parse(stored) : null;
+      
+      if (user?.role && user.role !== selectedRole) {
+        // Log mismatch but proceed to correct dashboard
+        console.warn(`Account role (${user.role}) differs from selection (${selectedRole}). Redirecting to correct portal.`);
+      }
+      
+      router.push(ROLE_REDIRECT[user?.role] ?? "/dashboard");
+    } catch (err: any) {
+      setError(err.message ?? "Invalid verification code.");
+    }
+  };
+
   const roleOptions = useMemo(
     () =>
       ([
@@ -82,6 +117,54 @@ function LoginForm() {
       ] as const),
     []
   );
+
+  if (is2FA) {
+    return (
+      <div className="animate-scale-in flex flex-col gap-6">
+        <div className="flex flex-col gap-2">
+          <h1 className="font-serif text-3xl md:text-4xl tracking-tight text-teal-dark">
+            Verify identity, {tempName}.
+          </h1>
+          <p className="font-sans text-sm text-teal/65">
+            We've sent a 6-digit verification code to <strong>{tempEmail}</strong>.
+          </p>
+        </div>
+
+        <form onSubmit={onVerifySubmit} className="flex flex-col gap-5">
+          <Input
+            id="login-verify-code"
+            label="Verification Code"
+            floating={false}
+            showFocusLine={false}
+            placeholder="123456"
+            maxLength={6}
+            value={verificationCode}
+            onChange={(e) => setVerificationCode(e.target.value.replace(/\D/g, ""))}
+            autoFocus
+            showStatusIcon={false}
+          />
+
+          {error && (
+            <div className="rounded-xl bg-[#FDEAEA] border border-[#F5B8B8] px-4 py-3">
+              <p className="font-sans text-sm text-[#B03030]">{error}</p>
+            </div>
+          )}
+
+          <Button type="submit" loading={isLoading} size="lg" className="w-full mt-1 !rounded-full !py-4">
+            Verify & Sign In
+          </Button>
+
+          <button
+            type="button"
+            onClick={() => setIs2FA(false)}
+            className="font-sans text-xs text-center text-teal/50 hover:text-teal transition-colors"
+          >
+            Back to login
+          </button>
+        </form>
+      </div>
+    );
+  }
 
   return (
     <div className="animate-scale-in flex flex-col gap-6">

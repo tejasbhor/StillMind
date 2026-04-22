@@ -16,6 +16,7 @@ from app.modules.auth.schemas import (
     ForgotPasswordRequest,
     ResetPasswordRequest,
     RegisterVerifyRequest,
+    LoginVerifyRequest,
     RegistrationInitiatedResponse,
     MeResponse,
     UserOut,
@@ -90,13 +91,42 @@ async def login(
 ):
     client_ip = _get_client_ip(request)
     result = await _svc.login(db, req, client_ip)
+    
+    # If 2FA is required, don't set cookies yet
+    if result.get("requires_2fa"):
+        return success_response(
+            data={
+                "requires_2fa": True,
+                "email": req.email,
+                "full_name": result.get("full_name"),
+                "message": result["message"]
+            }
+        )
+        
     _set_refresh_cookie(response, result["refresh_token"])
     return success_response(
         data={
             "access_token": result["access_token"],
             "token_type": "bearer",
             "user": UserOut.model_validate(result["user"]).model_dump(),
-            "session_id": result.get("session_id"),  # New: session tracking
+            "session_id": result.get("session_id"),
+        }
+    )
+
+
+@router.post("/login/verify", response_model=dict, summary="Verify 2FA and complete login")
+@limiter.limit("5/minute")
+async def login_verify(
+    request: Request, response: Response, req: LoginVerifyRequest, db: AsyncSession = Depends(get_db)
+):
+    result = await _svc.verify_login(db, req.email, req.code)
+    _set_refresh_cookie(response, result["refresh_token"])
+    return success_response(
+        data={
+            "access_token": result["access_token"],
+            "token_type": "bearer",
+            "user": UserOut.model_validate(result["user"]).model_dump(),
+            "session_id": result.get("session_id"),
         }
     )
 

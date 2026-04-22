@@ -169,7 +169,21 @@ async def send_verification_code(to_email: str, code: str, name: str = None, exp
     )
 
 
-async def send_password_reset(to_email: str, reset_url: str, name: str = None, expires_hours: int = 1):
+async def send_login_code(to_email: str, code: str, name: str, expires_minutes: int = 10):
+    """Dispatch a login verification code email."""
+    await send_templated_email(
+        to_email=to_email,
+        subject="StillMind Login Verification Code",
+        template="login_verification",
+        context={
+            "code": code,
+            "name": name,
+            "expires_minutes": expires_minutes,
+        }
+    )
+
+
+async def send_password_reset(to_email: str, reset_url: str, name: str, expires_hours: int = 1):
     """Send password reset email."""
     await send_templated_email(
         to_email=to_email,

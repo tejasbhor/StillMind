@@ -4,6 +4,7 @@ from .service import (
     send_email,
     send_templated_email,
     send_verification_code,
+    send_login_code,
     send_password_reset,
     send_appointment_reminder,
     send_appointment_confirmation_required,
