@@ -190,6 +190,33 @@ export interface LoginResult {
 }
 
 export const authApi = {
+  initiateStudentRegistration: async (
+    payload: StudentRegisterPayload
+  ): Promise<{ email: string; message: string; expires_in_minutes: number }> => {
+    const res = await apiFetch<ApiEnvelope<{ email: string; message: string; expires_in_minutes: number }>>(
+      "/auth/register/student/initiate",
+      {
+        method: "POST",
+        body: JSON.stringify(payload),
+      }
+    );
+    return res.data;
+  },
+
+  verifyStudentRegistration: async (
+    email: string,
+    code: string
+  ): Promise<StudentRegisterResult> => {
+    const res = await apiFetch<ApiEnvelope<StudentRegisterResult>>(
+      "/auth/register/student/verify",
+      {
+        method: "POST",
+        body: JSON.stringify({ email, code }),
+      }
+    );
+    return res.data;
+  },
+
   registerStudent: async (
     payload: StudentRegisterPayload
   ): Promise<StudentRegisterResult> => {

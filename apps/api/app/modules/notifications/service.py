@@ -1,48 +1,37 @@
-import smtplib
+import aiosmtplib
 from email.message import EmailMessage
-import os
-import asyncio
 import structlog
-from concurrent.futures import ThreadPoolExecutor
+from app.core.config import settings
 
 log = structlog.get_logger(__name__)
 
-# Basic SMTP implementation based on .env
-SMTP_HOST = os.getenv("SMTP_HOST", "smtp.gmail.com")
-SMTP_PORT = int(os.getenv("SMTP_PORT", 587))
-SMTP_USERNAME = os.getenv("SMTP_USERNAME", "")
-SMTP_PASSWORD = os.getenv("SMTP_PASSWORD", "")
-SMTP_FROM = os.getenv("SMTP_FROM", "")
-
-_executor = ThreadPoolExecutor(max_workers=3)
-
-def _send_email_sync(to_email: str, subject: str, content: str):
-    if not SMTP_USERNAME or not SMTP_PASSWORD:
+async def send_email(to_email: str, subject: str, content: str):
+    """
+    Sends an email asynchronously using aiosmtplib.
+    """
+    if not settings.SMTP_USERNAME or not settings.SMTP_PASSWORD:
         log.warning("smtp_credentials_missing", to=to_email)
         return
         
     msg = EmailMessage()
     msg.set_content(content)
     msg['Subject'] = subject
-    msg['From'] = SMTP_FROM
+    msg['From'] = f"{settings.SMTP_FROM_NAME} <{settings.SMTP_FROM_EMAIL}>"
     msg['To'] = to_email
 
     try:
-        server = smtplib.SMTP(SMTP_HOST, SMTP_PORT)
-        server.starttls()
-        server.login(SMTP_USERNAME, SMTP_PASSWORD)
-        server.send_message(msg)
-        server.quit()
+        await aiosmtplib.send(
+            msg,
+            hostname=settings.SMTP_HOST,
+            port=settings.SMTP_PORT,
+            username=settings.SMTP_USERNAME,
+            password=settings.SMTP_PASSWORD,
+            use_tls=settings.SMTP_USE_TLS,
+            starttls=not settings.SMTP_USE_TLS and settings.SMTP_PORT == 587
+        )
         log.info("email_sent", to=to_email, subject=subject)
     except Exception as e:
         log.error("email_send_failed", error=str(e), to=to_email)
-
-async def send_email(to_email: str, subject: str, content: str):
-    """
-    Sends an email asynchronously without blocking the main event loop.
-    """
-    loop = asyncio.get_running_loop()
-    await loop.run_in_executor(_executor, _send_email_sync, to_email, subject, content)
 
 async def dispatch_notification(user_id: str, email: str, template: str, context: dict):
     """

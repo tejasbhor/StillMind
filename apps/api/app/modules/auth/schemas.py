@@ -142,6 +142,9 @@ class ForgotPasswordRequest(BaseModel):
         return v.lower().strip()
 
 
+        return v
+
+
 class ResetPasswordRequest(BaseModel):
     token: str
     new_password: str
@@ -158,6 +161,16 @@ class ResetPasswordRequest(BaseModel):
                 f"Password must not exceed {MAX_PASSWORD_LENGTH} characters"
             )
         return v
+
+
+class RegisterVerifyRequest(BaseModel):
+    email: EmailStr
+    code: str
+
+    @field_validator("email")
+    @classmethod
+    def normalize_email(cls, v: str) -> str:
+        return v.lower().strip()
 
 
 # ---------------------------------------------------------------------------
@@ -180,6 +193,12 @@ class StudentRegisterResponse(BaseModel):
     user_id: str
     role: str
     profile_status: str
+
+
+class RegistrationInitiatedResponse(BaseModel):
+    email: str
+    message: str
+    expires_in_minutes: int = 15
 
 
 class LoginResponse(BaseModel):

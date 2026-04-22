@@ -13,6 +13,7 @@ from starlette.middleware.sessions import SessionMiddleware
 
 from app.core.config import settings
 from app.core.responses import error_response
+from app.core.redis import redis_client
 
 limiter = Limiter(key_func=get_remote_address, default_limits=["60/minute"])
 
@@ -69,7 +70,12 @@ async def lifespan(app: FastAPI):
         except Exception as e:
             log.warning("rbac_seeding_skipped", error=str(e))
 
+    # Connect Redis
+    await redis_client.connect()
+
     yield
+    # Disconnect Redis
+    await redis_client.disconnect()
     log.info("stillmind_api_stopping")
 
 

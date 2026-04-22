@@ -35,6 +35,7 @@ from app.modules.auth.schemas import (
     sanitize_name,
 )
 from app.modules.notifications.service import send_email
+from app.core.redis import redis_client
 
 logger = structlog.get_logger()
 
@@ -221,6 +222,112 @@ class AuthService:
                 status_code=status.HTTP_409_CONFLICT,
                 detail="An account with this email already exists",
             )
+
+    async def initiate_student_registration(
+        self, db: AsyncSession, req: StudentRegisterRequest
+    ) -> dict:
+        """
+        Validates the request and sends a verification code.
+        The actual user creation happens in verify_student_registration.
+        """
+        email = req.email.lower().strip()
+        
+        # 1. Resolve Org and Check Domain Policy
+        org = await self._resolve_registration_org(db, req)
+        if org.domain:
+            allowed_domain = org.domain.lower().strip()
+            user_domain = email.split("@")[-1]
+            if user_domain != allowed_domain:
+                raise HTTPException(
+                    status_code=status.HTTP_403_FORBIDDEN,
+                    detail=f"Registration is restricted to {allowed_domain} email addresses."
+                )
+
+        # Check for existing user
+        existing = await db.execute(select(User).where(func.lower(User.email) == email))
+        if existing.scalar_one_or_none():
+            raise HTTPException(
+                status_code=status.HTTP_409_CONFLICT,
+                detail="An account with this email already exists",
+            )
+
+        # Generate 6-digit code
+        import random
+        code = f"{random.randint(100000, 999999)}"
+        
+        # Store registration data in Redis (valid for 15 mins)
+        reg_data = req.model_dump()
+        # We also need to store the code
+        verification_key = f"reg_verify:{email}"
+        data_to_store = {
+            "request": reg_data,
+            "code": code,
+            "org_id": org.id,
+            "attempts": 0
+        }
+        
+        await redis_client.set_json(verification_key, data_to_store, expire=900) # 15 mins
+        
+        # Send email
+        await send_email(
+            to_email=email,
+            subject="StillMind: Your Verification Code",
+            content=f"Hello,\n\nYour verification code for StillMind registration is: {code}\n\nThis code expires in 15 minutes.\n\n- StillMind Team"
+        )
+        
+        logger.info("registration_initiated", email_hash=hash(email[:3]))
+        
+        return {
+            "email": email,
+            "message": "Verification code sent to your email",
+            "expires_in_minutes": 15
+        }
+
+    async def verify_student_registration(
+        self, db: AsyncSession, email: str, code: str
+    ) -> dict:
+        """
+        Verifies the code and completes the registration.
+        """
+        verification_key = f"reg_verify:{email}"
+        stored_data = await redis_client.get_json(verification_key)
+        
+        if not stored_data:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Verification code expired or invalid. Please start over."
+            )
+            
+        if stored_data["code"] != code:
+            # Increment attempts
+            stored_data["attempts"] += 1
+            if stored_data["attempts"] >= 5:
+                await redis_client.delete(verification_key)
+                raise HTTPException(
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    detail="Too many failed attempts. Please start over."
+                )
+            await redis_client.set_json(verification_key, stored_data, expire=900)
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Invalid verification code."
+            )
+
+        # Verification successful, complete registration
+        req_dict = stored_data["request"]
+        # Convert dict back to request schema for reuse
+        from app.modules.auth.schemas import StudentRegisterRequest
+        req = StudentRegisterRequest(**req_dict)
+        
+        # Call the actual registration logic
+        # We need to make sure register_student is clean
+        result = await self.register_student(db, req)
+        
+        # Cleanup Redis
+        await redis_client.delete(verification_key)
+        
+        logger.info("registration_completed", email_hash=hash(email[:3]))
+        return result
 
     # ------------------------------------------------------------------
     # Login with account lockout protection + anti-timing attack

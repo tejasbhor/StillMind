@@ -15,6 +15,8 @@ from app.modules.auth.schemas import (
     RefreshResponse,
     ForgotPasswordRequest,
     ResetPasswordRequest,
+    RegisterVerifyRequest,
+    RegistrationInitiatedResponse,
     MeResponse,
     UserOut,
 )
@@ -54,17 +56,31 @@ def _clear_refresh_cookie(response: Response):
 
 
 @router.post(
-    "/register/student",
+    "/register/student/initiate",
     response_model=dict,
-    status_code=status.HTTP_201_CREATED,
-    summary="Register a new student account",
+    status_code=status.HTTP_200_OK,
+    summary="Initiate student registration (sends code)",
 )
 @limiter.limit("5/minute")
-async def register_student(
+async def initiate_student_registration(
     request: Request, req: StudentRegisterRequest, db: AsyncSession = Depends(get_db)
 ):
-    result = await _svc.register_student(db, req)
-    return success_response(data=result, message="Student registered successfully")
+    result = await _svc.initiate_student_registration(db, req)
+    return success_response(data=result, message=result["message"])
+
+
+@router.post(
+    "/register/student/verify",
+    response_model=dict,
+    status_code=status.HTTP_201_CREATED,
+    summary="Verify student registration and create account",
+)
+@limiter.limit("5/minute")
+async def verify_student_registration(
+    request: Request, req: RegisterVerifyRequest, db: AsyncSession = Depends(get_db)
+):
+    result = await _svc.verify_student_registration(db, req.email, req.code)
+    return success_response(data=result, message="Account created successfully")
 
 
 @router.post("/login", response_model=dict, summary="Authenticate any role")
