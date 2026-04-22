@@ -110,18 +110,21 @@ async def send_email(
     
     try:
         # Smart TLS handling based on port
-        use_implicit_tls = settings.SMTP_PORT == 465
-        use_explicit_tls = settings.SMTP_PORT == 587
+        # Port 465: Implicit TLS (use_tls=True)
+        # Port 587: Explicit TLS (start_tls=True)
+        smtp_kwargs = {
+            "hostname": settings.SMTP_HOST,
+            "port": settings.SMTP_PORT,
+            "username": settings.SMTP_USERNAME,
+            "password": settings.SMTP_PASSWORD,
+        }
         
-        await aiosmtplib.send(
-            msg,
-            hostname=settings.SMTP_HOST,
-            port=settings.SMTP_PORT,
-            username=settings.SMTP_USERNAME,
-            password=settings.SMTP_PASSWORD,
-            use_tls=use_implicit_tls,
-            starttls=use_explicit_tls
-        )
+        if settings.SMTP_PORT == 465:
+            smtp_kwargs["use_tls"] = True
+        elif settings.SMTP_PORT == 587:
+            smtp_kwargs["start_tls"] = True
+        
+        await aiosmtplib.send(msg, **smtp_kwargs)
         log.info("email_sent", to=to_email, subject=subject, template=template)
     except Exception as e:
         log.error("email_send_failed", error=str(e), to=to_email, subject=subject)
