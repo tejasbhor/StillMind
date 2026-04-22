@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useState } from "react";
+import { useState, Suspense } from "react";
 import { useRouter } from "next/navigation";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -61,7 +61,7 @@ const DEMO_STUDENT = {
   phone: "+91 9876543210",
 };
 
-export default function RegisterPage() {
+function RegisterPage() {
   const router = useRouter();
   const { login } = useAuthStore();
 
@@ -456,11 +456,8 @@ export default function RegisterPage() {
   );
 }
 
-function RegisterContent() {
-  return <RegisterPage />;
-}
 
-export function RegisterWrapper() {
+export default function RegisterWrapper() {
   return (
     <Suspense fallback={
       <div className="flex flex-col items-center justify-center py-12 gap-4">
