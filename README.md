@@ -49,8 +49,14 @@ For detailed setup instructions, including environment variables and database se
 3. **Backend Startup**:
    ```bash
    cd apps/api
+   uv sync                     # Install dependencies
    uv run python scripts/dev_startup.py  # Warning: Wipes local data
    uv run uvicorn app.main:app --reload
+   ```
+4. **Frontend Startup**:
+   ```bash
+   cd apps/web
+   npm run dev
    ```
 
 ---
