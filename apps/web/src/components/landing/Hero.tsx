@@ -54,14 +54,14 @@ export default function Hero() {
   const TimelineCard4Icon = timelineCards[3].icon;
 
   return (
-    <section className="snap-section relative flex min-h-screen flex-col items-center justify-start overflow-hidden bg-[#F7F6F2] px-6 pt-24 pb-6 lg:h-screen lg:pt-28 lg:pb-4">
+    <section className="snap-section relative flex min-h-screen flex-col items-center justify-start overflow-hidden bg-[#F7F6F2] px-6 pt-24 pb-12 lg:min-h-screen lg:pt-32 lg:pb-12">
       <div className="pointer-events-none absolute inset-0">
         <div className="absolute left-[10%] top-[14%] h-64 w-64 rounded-full bg-sage/20 blur-3xl" />
         <div className="absolute right-[5%] top-[20%] h-72 w-72 rounded-full bg-teal/10 blur-3xl" />
         <div className="absolute right-[18%] bottom-[22%] h-56 w-56 rounded-full bg-emerald-100/40 blur-2xl" />
       </div>
 
-      <motion.div className="relative z-10 mx-auto grid w-full max-w-7xl items-center gap-7 lg:grid-cols-[1.03fr_1fr] lg:gap-9">
+      <motion.div className="relative z-10 mx-auto grid w-full max-w-[1440px] items-center gap-7 lg:grid-cols-[1.03fr_1fr] lg:gap-9 px-4 sm:px-6 lg:px-8">
         <div className="flex flex-col gap-5">
           <motion.div
             variants={fadeUp}
@@ -250,7 +250,7 @@ export default function Hero() {
         initial="hidden"
         animate="visible"
         custom={6}
-        className="relative z-10 mt-4 w-full max-w-7xl rounded-full border border-teal/10 bg-white/80 px-6 py-2.5 text-center backdrop-blur"
+        className="relative z-10 mt-8 w-full max-w-[1440px] mx-auto rounded-full border border-teal/10 bg-white/80 px-6 py-3 text-center backdrop-blur"
       >
         <p className="text-[11px] font-black uppercase tracking-[0.18em] text-teal/55">
           Powering student well-being across campuses

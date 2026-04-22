@@ -101,7 +101,7 @@ export default function WhyStillMind() {
     <section
       ref={sectionRef}
       id="why"
-      className="snap-section h-screen flex flex-col items-center justify-center bg-[#ECEAE5] relative overflow-hidden px-6 pt-16"
+      className="snap-section min-h-screen flex flex-col items-center justify-center bg-[#ECEAE5] relative overflow-hidden px-6 pt-24 pb-16 lg:pt-32"
     >
       {/* Mesh wireframe */}
       <MeshBg />
@@ -115,7 +115,7 @@ export default function WhyStillMind() {
       {/* Lower-left counter-bloom */}
       <div className="pointer-events-none absolute bottom-[-8%] left-[-4%] w-[36%] aspect-square rounded-full bg-teal/[0.10] blur-[110px]" />
 
-      <div className="max-w-6xl mx-auto w-full relative z-10">
+      <div className="max-w-[1440px] mx-auto w-full relative z-10 px-4 sm:px-6 lg:px-8">
 
         {/* ── Header row ── */}
         <div className="grid lg:grid-cols-2 gap-8 lg:gap-16 items-end mb-10 lg:mb-12">

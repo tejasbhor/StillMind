@@ -17,7 +17,7 @@ export default function LandingMarquee() {
 
   return (
     <section className="relative -mt-2 z-20 px-6 pb-2">
-      <div className="mx-auto max-w-6xl rounded-2xl border border-teal/10 bg-white/70 backdrop-blur-xl overflow-hidden shadow-soft">
+      <div className="mx-auto max-w-[1440px] rounded-2xl border border-teal/10 bg-white/70 backdrop-blur-xl overflow-hidden shadow-soft">
         <div className="mask-fade-x">
           <motion.div
             className="marquee-track py-3"

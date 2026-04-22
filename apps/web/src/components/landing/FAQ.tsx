@@ -35,13 +35,13 @@ export default function FAQ() {
     <section
       ref={sectionRef}
       id="faq"
-      className="snap-section h-screen flex flex-col items-center justify-center bg-[#FAFAF8] relative overflow-hidden px-6 pt-12"
+      className="snap-section min-h-screen flex flex-col items-center justify-center bg-[#FAFAF8] relative overflow-hidden px-6 pt-24 pb-16 lg:pt-32"
     >
       <motion.div
         style={{ y: yAccent }}
         className="pointer-events-none absolute left-[-6rem] top-10 h-64 w-64 rounded-full bg-teal/10 blur-[120px]"
       />
-      <div className="max-w-6xl mx-auto w-full relative z-10">
+      <div className="max-w-[1440px] mx-auto w-full relative z-10 px-4 sm:px-6 lg:px-8">
         <motion.div
           className="mb-8 lg:mb-12 text-center"
           variants={fadeUp}

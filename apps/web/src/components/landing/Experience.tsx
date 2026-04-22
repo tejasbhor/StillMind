@@ -104,7 +104,7 @@ export default function Experience() {
     <section
       ref={sectionRef}
       id="experience"
-      className="snap-section h-screen flex flex-col items-center justify-center bg-[#0B1E1A] text-foam relative overflow-hidden px-6 pt-16"
+      className="snap-section min-h-screen flex flex-col items-center justify-center bg-[#0B1E1A] text-foam relative overflow-hidden px-6 pt-24 pb-16 lg:pt-32"
     >
       {/* Ambient bloom — top right */}
       <motion.div
@@ -116,7 +116,7 @@ export default function Experience() {
       {/* Radial overlay for depth */}
       <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_72%_60%_at_72%_28%,rgba(123,168,154,0.18),transparent_60%)]" />
 
-      <div className="max-w-6xl mx-auto w-full relative z-10">
+      <div className="max-w-[1440px] mx-auto w-full relative z-10 px-4 sm:px-6 lg:px-8">
         <div className="grid lg:grid-cols-[1fr_1.05fr] gap-10 lg:gap-14 items-center">
 
           {/* ── LEFT: Copy + Feature list ── */}

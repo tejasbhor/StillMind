@@ -47,7 +47,7 @@ export default function Navbar() {
       transition={{ duration: 0.8, ease: [0.22, 1, 0.36, 1] }}
     >
       <motion.div 
-        className={`w-full max-w-7xl pointer-events-auto flex items-center justify-between gap-12 py-2 px-6 lg:px-10 rounded-full transition-all duration-500 ease-[cubic-bezier(0.22,1,0.36,1)] ${navStyles.container}`}
+        className={`w-full max-w-[1440px] pointer-events-auto flex items-center justify-between gap-12 py-2 px-6 lg:px-10 rounded-full transition-all duration-500 ease-[cubic-bezier(0.22,1,0.36,1)] ${navStyles.container}`}
       >
         <Logo 
           className="shrink-0 scale-90 lg:scale-100 origin-left" 

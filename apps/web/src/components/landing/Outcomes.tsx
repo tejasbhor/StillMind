@@ -60,14 +60,14 @@ export default function Outcomes() {
     <section
       ref={sectionRef}
       id="outcomes"
-      className="snap-section h-screen flex flex-col items-center justify-center bg-[#F7F6F2] relative overflow-hidden px-6"
+      className="snap-section min-h-screen flex flex-col items-center justify-center bg-[#F7F6F2] relative overflow-hidden px-6 pt-24 pb-16 lg:pt-32"
     >
       <motion.div
         style={{ y: yParallax }}
         className="pointer-events-none absolute right-[-8rem] top-20 h-72 w-72 rounded-full bg-sage/10 blur-[120px]"
       />
       
-      <div className="max-w-6xl mx-auto w-full relative z-10">
+      <div className="max-w-[1440px] mx-auto w-full relative z-10 px-4 sm:px-6 lg:px-8">
         <motion.div
           className="mb-8 lg:mb-10"
           variants={fadeUp}

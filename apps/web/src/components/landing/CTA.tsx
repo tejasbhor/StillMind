@@ -30,13 +30,13 @@ export default function CTA() {
   return (
     <section
       id="cta"
-      className="snap-section relative flex h-screen flex-col overflow-hidden bg-[#031a1f] px-6 pt-24 pb-6 lg:pt-28"
+      className="snap-section relative flex min-h-screen flex-col overflow-hidden bg-[#031a1f] px-6 pt-24 pb-16 lg:pt-32"
     >
       {/* Ambient blooms */}
       <div className="pointer-events-none absolute top-[-12%] right-[-6%] w-[42%] aspect-square rounded-full bg-sage/[0.09] blur-[130px]" />
       <div className="pointer-events-none absolute bottom-[-8%] left-[-4%] w-[32%] aspect-square rounded-full bg-teal/[0.07] blur-[110px]" />
 
-      <div className="max-w-7xl mx-auto w-full relative z-10 flex flex-col gap-4 flex-1 justify-center">
+      <div className="max-w-[1440px] mx-auto w-full relative z-10 flex flex-col gap-6 flex-1 justify-center px-4 sm:px-6 lg:px-8">
 
         {/* ── Main card ── */}
         <motion.div

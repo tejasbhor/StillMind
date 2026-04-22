@@ -150,7 +150,7 @@ export default function StatsSection() {
     <section
       ref={sectionRef}
       id="stats"
-      className="snap-section relative flex h-screen flex-col overflow-hidden bg-[#041c22] px-6 pt-24 lg:pt-28 pb-[34px]"
+      className="snap-section relative flex min-h-screen flex-col overflow-hidden bg-[#041c22] px-6 pt-24 lg:pt-32 pb-16"
     >
       {/* Ambient */}
       <motion.div style={{ y: yBloom }}
@@ -158,7 +158,7 @@ export default function StatsSection() {
       <div className="pointer-events-none absolute bottom-0 left-[-4%] w-[30%] aspect-square rounded-full bg-teal/[0.07] blur-[100px]" />
       <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_55%_45%_at_50%_28%,rgba(123,168,154,0.07),transparent_65%)]" />
 
-      <div className="max-w-7xl mx-auto w-full relative z-10 flex flex-col gap-4 lg:gap-5 flex-1 justify-center">
+      <div className="max-w-[1440px] mx-auto w-full relative z-10 flex flex-col gap-6 lg:gap-8 flex-1 justify-center px-4 sm:px-6 lg:px-8">
 
         {/* ── Row 1: Copy | Hero stat | Feature list ── */}
         <div className="grid grid-cols-[1fr_1.75fr_1fr] gap-4 lg:gap-5 flex-none">

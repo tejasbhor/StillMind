@@ -44,7 +44,7 @@ export default function Footer() {
         <div className="absolute bottom-[-10rem] left-[-8rem] h-96 w-96 rounded-full bg-teal/10 blur-[140px]" />
       </div>
 
-      <div className="relative mx-auto max-w-6xl px-6 lg:px-8 pt-16 pb-10">
+      <div className="relative mx-auto max-w-[1440px] px-6 lg:px-8 pt-16 pb-10">
         {/* Top CTA band */}
         <div className="flex flex-col md:flex-row md:items-end md:justify-between gap-8 pb-10 border-b border-teal/10">
           <div className="max-w-2xl space-y-3">
