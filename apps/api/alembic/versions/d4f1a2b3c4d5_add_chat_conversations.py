@@ -17,28 +17,28 @@ branch_labels: Union[str, Sequence[str], None] = None
 depends_on: Union[str, Sequence[str], None] = None
 
 
-def upgrade() -> None:
-    conversation_kind = sa.Enum(
-        "DIRECT", "GROUP", name="chat_conversation_kind"
-    )
-    conversation_status = sa.Enum(
-        "ACTIVE", "ARCHIVED", name="chat_conversation_status"
-    )
-    participant_role = sa.Enum(
-        "student", "counselor", "admin", "system", name="chat_participant_role"
-    )
-
+    # Create the enum types explicitly first
     bind = op.get_bind()
-    conversation_kind.create(bind, checkfirst=True)
-    conversation_status.create(bind, checkfirst=True)
-    participant_role.create(bind, checkfirst=True)
+    sa.Enum("DIRECT", "GROUP", name="chat_conversation_kind").create(bind, checkfirst=True)
+    sa.Enum("ACTIVE", "ARCHIVED", name="chat_conversation_status").create(bind, checkfirst=True)
+    sa.Enum("student", "counselor", "admin", "system", name="chat_participant_role").create(bind, checkfirst=True)
 
     op.create_table(
         "chat_conversations",
         sa.Column("id", sa.String(length=36), nullable=False),
-        sa.Column("kind", conversation_kind, nullable=False, server_default="DIRECT"),
+        sa.Column(
+            "kind", 
+            sa.Enum(name="chat_conversation_kind"), 
+            nullable=False, 
+            server_default="DIRECT"
+        ),
         sa.Column("title", sa.String(length=200), nullable=True),
-        sa.Column("status", conversation_status, nullable=False, server_default="ACTIVE"),
+        sa.Column(
+            "status", 
+            sa.Enum(name="chat_conversation_status"), 
+            nullable=False, 
+            server_default="ACTIVE"
+        ),
         sa.Column("allocation_id", sa.String(length=36), nullable=True),
         sa.Column("created_by_user_id", sa.String(length=36), nullable=False),
         sa.Column(
@@ -80,7 +80,7 @@ def upgrade() -> None:
         sa.Column("id", sa.String(length=36), nullable=False),
         sa.Column("conversation_id", sa.String(length=36), nullable=False),
         sa.Column("user_id", sa.String(length=36), nullable=False),
-        sa.Column("role", participant_role, nullable=False),
+        sa.Column("role", sa.Enum(name="chat_participant_role"), nullable=False),
         sa.Column(
             "joined_at",
             sa.TIMESTAMP(timezone=True),
