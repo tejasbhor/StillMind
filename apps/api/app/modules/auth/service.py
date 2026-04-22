@@ -447,7 +447,7 @@ class AuthService:
         2. Create user if not exists (Auto-link if email matches)
         3. Issue tokens
         """
-        email = user_info.get("email")
+        email = user_info.get("email").lower().strip()
         google_id = user_info.get("sub")
         full_name = user_info.get("name", "Google User")
         avatar_url = user_info.get("picture")
@@ -466,6 +466,7 @@ class AuthService:
                 user.google_id = google_id
                 if not user.avatar_url:
                     user.avatar_url = avatar_url
+            else:
                 # 3. Create new user
                 user_id = str(uuid.uuid4())
                 
