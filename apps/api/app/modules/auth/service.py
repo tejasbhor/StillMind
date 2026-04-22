@@ -687,27 +687,42 @@ class AuthService:
         org = r.scalar_one_or_none()
         
         if not org:
-            await self._log_security_event(
-                db, 
-                "GOOGLE_AUTH_DOMAIN_REJECTED", 
-                metadata={"email": email, "domain": domain}
+            # --- ADMIN BYPASS ---
+            # If domain mismatch, check if user with this email exists and is an admin
+            admin_result = await db.execute(
+                select(User).where(func.lower(User.email) == email, User.role == "admin")
             )
-            logger.warning("google_auth_domain_rejected", email=email, domain=domain)
-            raise HTTPException(
-                status_code=status.HTTP_403_FORBIDDEN, 
-                detail=f"Login restricted to authorized institutional accounts. Domain {domain} is not permitted."
-            )
-        
-        org_id = org.id
+            admin_user = admin_result.scalar_one_or_none()
+            
+            if admin_user:
+                logger.info("google_auth_admin_bypass", email=email)
+                org_id = admin_user.organization_id
+                user = admin_user
+                # Proceed to token generation with this existing user
+            else:
+                await self._log_security_event(
+                    db, 
+                    "GOOGLE_AUTH_DOMAIN_REJECTED", 
+                    metadata={"email": email, "domain": domain}
+                )
+                logger.warning("google_auth_domain_rejected", email=email, domain=domain)
+                raise HTTPException(
+                    status_code=status.HTTP_403_FORBIDDEN, 
+                    detail=f"Login restricted to authorized institutional accounts. Domain {domain} is not permitted."
+                )
+        else:
+            org_id = org.id
+            user = None # Will find/create below
 
-        # 2. Try to find user by google_id
-        result = await db.execute(select(User).where(User.google_id == google_id))
-        user = result.scalar_one_or_none()
-
+        # 2. Try to find user by google_id if not already found via bypass
         if not user:
-            # 3. Try to find user by email
-            result = await db.execute(select(User).where(func.lower(User.email) == email))
+            result = await db.execute(select(User).where(User.google_id == google_id))
             user = result.scalar_one_or_none()
+            
+            if not user:
+                # 3. Try to find user by email
+                result = await db.execute(select(User).where(func.lower(User.email) == email))
+                user = result.scalar_one_or_none()
 
             if user:
                 # Link google_id to existing user

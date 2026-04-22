@@ -87,7 +87,7 @@ async def seed_data() -> None:
                 User(
                     id=admin_id,
                     organization_id=org_id,
-                    email="tejas.bhor@mssu.ac.in",
+                    email="tejasbhor203@gmail.com",
                     full_name="Tejas Bhor",
                     password_hash=hash_password("admin123"),
                     role="admin",
@@ -323,7 +323,7 @@ async def seed_data() -> None:
 
         # RBAC permissions/roles are seeded on API startup (`main.py` lifespan).
         log.info("seed_complete")
-        log.info("accounts", email="tejas.bhor@mssu.ac.in", password="admin123")
+        log.info("accounts", email="tejasbhor203@gmail.com", password="admin123")
         log.info("accounts", email="meera.rao@mssu.ac.in", password="counselor123")
         log.info("accounts", email="2023000051@mssu.ac.in", password="student123")
         log.info("accounts", email="2023000052@mssu.ac.in", password="student123")

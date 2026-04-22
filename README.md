@@ -17,7 +17,8 @@ The platform is deployed on **Oracle Cloud Infrastructure (OCI ARM64)**, integra
 | StillMind Portal | [https://stillmind.civiclens.space](https://stillmind.civiclens.space) |
 | REST API (Swagger) | [https://stillmind.civiclens.space/api/v1/docs](https://stillmind.civiclens.space/api/v1/docs) |
 
-> **Security Note:** All standard logins require **Mandatory 2FA**. Verification codes are dispatched via the institutional SMTP relay.
+> [!IMPORTANT]
+> **Production Hardening:** All standard logins require **Mandatory 2FA**. Demo accounts have been removed to ensure institutional integrity. Verification codes are dispatched via the institutional SMTP relay.
 
 ---
 
@@ -123,9 +124,9 @@ cp .env.example .env
 uv run uvicorn app.main:app --reload
 ```
 
-- Interactive API docs: [http://localhost:8000/docs](http://localhost:8000/docs)
+- Interactive API docs: [http://localhost:8000/api/v1/docs](http://localhost:8000/api/v1/docs)
 
-**Seed demo data:**
+**Seed production-ready data:**
 ```bash
 uv run python scripts/seed_all.py
 ```
