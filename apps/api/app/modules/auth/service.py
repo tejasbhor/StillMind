@@ -474,6 +474,7 @@ class AuthService:
                     password_hash="", # No password for Google users
                 )
                 db.add(user)
+                await db.flush() # Ensure user exists before profile is added
                 
                 # Also create student profile
                 profile = StudentProfile(
