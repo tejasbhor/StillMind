@@ -33,7 +33,7 @@ echo "🏗️ [3/6] Rebuilding Backend (FastAPI)..."
 sudo docker compose build backend
 
 echo "🏗️ [4/6] Rebuilding Frontend (Next.js Standalone)..."
-sudo docker compose build web
+sudo docker compose build frontend
 
 # 6. Start services
 echo "🚀 [5/6] Starting services..."
@@ -45,10 +45,10 @@ until sudo docker compose exec db pg_isready -U stillmind -d stillmind > /dev/nu
   sleep 2
 done
 
-# 8. Run migrations & Seed
-echo "🗃️ [6/6] Running migrations & seeding..."
-sudo docker compose exec backend uv run alembic upgrade head || echo "⚠️ Migration warnings detected, continuing..."
-sudo docker compose exec backend uv run python scripts/seed_all.py
+# 8. Fresh Start (Mirrors Local working environment)
+echo "🗃️ [6/6] Initializing Database (Fresh Start)..."
+# We run your dev_startup.py which drops everything, creates tables, and seeds data
+sudo docker compose exec backend uv run python scripts/dev_startup.py
 
 echo "✅ ALL DONE! StillMind is live:"
 echo "   → Platform : https://stillmind.civiclens.space"

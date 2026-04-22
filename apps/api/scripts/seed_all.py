@@ -42,14 +42,15 @@ async def _clear_tables(db) -> None:
     ]
     
     for table in tables:
-        try:
-            await db.execute(delete(table))
-        except Exception as e:
-            # Skip if table doesn't exist yet (UndefinedTable)
-            if "does not exist" in str(e).lower():
-                log.debug("skipping_clear_table_missing", table=table.__tablename__)
-            else:
-                raise e
+        async with db.begin_nested():
+            try:
+                await db.execute(delete(table))
+            except Exception as e:
+                # Skip if table doesn't exist yet (UndefinedTable)
+                if "does not exist" in str(e).lower():
+                    log.debug("skipping_clear_table_missing", table=table.__tablename__)
+                else:
+                    raise e
     await db.flush()
 
 

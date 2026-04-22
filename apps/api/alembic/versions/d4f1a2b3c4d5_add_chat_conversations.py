@@ -39,14 +39,14 @@ def upgrade() -> None:
         sa.Column("id", sa.String(length=36), nullable=False),
         sa.Column(
             "kind", 
-            sa.Enum(name="chat_conversation_kind"), 
+            sa.Enum(name="chat_conversation_kind", create_type=False), 
             nullable=False, 
             server_default="DIRECT"
         ),
         sa.Column("title", sa.String(length=200), nullable=True),
         sa.Column(
             "status", 
-            sa.Enum(name="chat_conversation_status"), 
+            sa.Enum(name="chat_conversation_status", create_type=False), 
             nullable=False, 
             server_default="ACTIVE"
         ),
@@ -91,7 +91,7 @@ def upgrade() -> None:
         sa.Column("id", sa.String(length=36), nullable=False),
         sa.Column("conversation_id", sa.String(length=36), nullable=False),
         sa.Column("user_id", sa.String(length=36), nullable=False),
-        sa.Column("role", sa.Enum(name="chat_participant_role"), nullable=False),
+        sa.Column("role", sa.Enum(name="chat_participant_role", create_type=False), nullable=False),
         sa.Column(
             "joined_at",
             sa.TIMESTAMP(timezone=True),

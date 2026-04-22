@@ -19,21 +19,25 @@ async def reset_and_seed():
 
     async with AsyncSessionLocal() as db:
         # Drop all tables (CASCADE handles foreign keys)
-        await db.execute(text("DROP TABLE IF EXISTS admin_configs CASCADE"))
-        await db.execute(text("DROP TABLE IF EXISTS audit_logs CASCADE"))
-        await db.execute(text("DROP TABLE IF EXISTS risk_logs CASCADE"))
-        await db.execute(text("DROP TABLE IF EXISTS session_notes CASCADE"))
-        await db.execute(text("DROP TABLE IF EXISTS sessions CASCADE"))
-        await db.execute(text("DROP TABLE IF EXISTS chat_messages CASCADE"))
-        await db.execute(text("DROP TABLE IF EXISTS allocations CASCADE"))
-        await db.execute(text("DROP TABLE IF EXISTS notifications CASCADE"))
-        await db.execute(text("DROP TABLE IF EXISTS assessments CASCADE"))
-        await db.execute(text("DROP TABLE IF EXISTS student_profiles CASCADE"))
-        await db.execute(text("DROP TABLE IF EXISTS counselor_profiles CASCADE"))
-        await db.execute(text("DROP TABLE IF EXISTS organizations CASCADE"))
-        await db.execute(text("DROP TABLE IF EXISTS users CASCADE"))
+        tables = [
+            "admin_configs", "audit_logs", "risk_logs", "session_notes",
+            "sessions", "chat_messages", "chat_conversation_participants",
+            "chat_conversations", "allocations", "notifications", "assessments",
+            "student_profiles", "counselor_profiles", "organizations", "users"
+        ]
+        for table in tables:
+            await db.execute(text(f"DROP TABLE IF EXISTS {table} CASCADE"))
+            
+        # Drop Enum types to prevent DuplicateObjectErrors
+        enums = [
+            "chat_conversation_kind", "chat_conversation_status", 
+            "chat_participant_role", "assessment_type", "risk_level"
+        ]
+        for enum in enums:
+            await db.execute(text(f"DROP TYPE IF EXISTS {enum} CASCADE"))
+            
         await db.commit()
-        print("==> Database reset complete")
+        print("==> Database reset complete (Tables & Enums)")
 
     # Recreate tables
     print("==> Creating tables...")
