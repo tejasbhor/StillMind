@@ -29,10 +29,12 @@ echo "🚀 [3/5] Starting containers..."
 sudo docker compose up -d --remove-orphans
 
 echo "🗃️ [4/5] Running database migrations..."
-# Assuming backend has an alembic or similar migration command
-sudo docker compose exec -T backend python -m app.db.init_db || echo "⚠️ Migration script failed or not found, check logs."
+sudo docker compose exec -T api uv run alembic upgrade head
 
-echo "🧹 [5/5] Cleaning up old images..."
+echo "🌱 [5/5] Seeding initial data..."
+sudo docker compose exec -T api uv run python scripts/seed_all.py
+
+echo "🧹 Cleaning up old images..."
 sudo docker image prune -f
 
 echo ""

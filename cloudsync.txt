@@ -1,10 +1,8 @@
 # =====================================================
 # StillMind — Cloud Sync & Redeploy Script
-# Run from: /opt/stillmind
 # =====================================================
 
 # 1. FIX OWNERSHIP (Required for OCI)
-# This fixes the "dubious ownership" error once and for all
 sudo chown -R $USER:$USER /opt/stillmind
 git config --global --add safe.directory /opt/stillmind
 
@@ -14,32 +12,26 @@ cd /opt/stillmind
 echo "📥 Pulling latest code..."
 git pull origin main
 
-# 3. Ensure .env exists (Now it will find the file!)
-if [ ! -f .env ]; then
-    echo "⚠️ .env not found. Creating from example..."
-    cp .env.example .env
-    echo "❌ PLEASE EDIT /opt/stillmind/.env with your production secrets then re-run!"
-    exit 1
-fi
-
-# 4. Stop StillMind containers
+# 3. Stop StillMind containers
 sudo docker compose down
 
-# 5. Rebuild sequentially to conserve RAM
+# 4. Rebuild sequentially to conserve RAM
 echo "🏗️ [1/2] Rebuilding Backend..."
 sudo docker compose build backend
 
 echo "🏗️ [2/2] Rebuilding Frontend..."
 sudo docker compose build frontend
 
-# 6. Start StillMind services
+# 5. Start StillMind services
+echo "🚀 Starting services..."
 sudo docker compose up -d --remove-orphans
 
-# 7. Apply database migrations & Seed data
-echo "⌛ Waiting for DB..."
-sleep 10
-sudo docker compose exec -T backend uv run alembic upgrade head
-sudo docker compose exec -T backend uv run python scripts/seed_all.py
+# 6. Database Migrations & Seeding (Critical!)
+echo "🗃️ Running database migrations..."
+# Note: We use 'alembic upgrade head'
+sudo docker compose exec -T api uv run alembic upgrade head
 
-echo ""
+echo "🌱 Seeding initial data..."
+sudo docker compose exec -T api uv run python scripts/seed_all.py
+
 echo "✅ ALL DONE! StillMind is live at https://stillmind.civiclens.space"
