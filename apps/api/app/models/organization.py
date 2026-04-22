@@ -17,6 +17,7 @@ class Organization(Base):
     id: Mapped[str] = mapped_column(String(36), primary_key=True, default=lambda: str(uuid.uuid4()))
     name: Mapped[str] = mapped_column(String(255), nullable=False)
     slug: Mapped[str] = mapped_column(String(100), unique=True, nullable=False, index=True)
+    domain: Mapped[str | None] = mapped_column(String(255), unique=True, nullable=True, index=True)
     contact_email: Mapped[str | None] = mapped_column(String(255), nullable=True)
     # Branding, signup policy, feature flags
     settings: Mapped[dict | None] = mapped_column(JSONB, nullable=True, default=dict)

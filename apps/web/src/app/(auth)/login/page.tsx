@@ -208,7 +208,9 @@ function LoginForm() {
       <button
         type="button"
         onClick={() => {
-          window.location.href = `${process.env.NEXT_PUBLIC_API_URL || "/api/v1"}/auth/login/google`;
+          const org = searchParams.get("org") || "";
+          const role = selectedRole || "student";
+          window.location.href = `${process.env.NEXT_PUBLIC_API_URL || "/api/v1"}/auth/login/google?role=${role}${org ? `&org=${org}` : ""}`;
         }}
         className="group relative flex items-center justify-center gap-3 w-full py-3.5 px-4 rounded-full border border-teal/10 bg-white hover:bg-teal/[0.02] hover:border-teal/20 transition-all duration-300 shadow-sm hover:shadow-md"
       >

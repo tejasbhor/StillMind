@@ -60,15 +60,16 @@ async def seed_data() -> None:
     async with AsyncSessionLocal() as db:
         await _clear_tables(db)
 
-        org_row = await db.execute(select(Organization).where(Organization.slug == "default"))
+        org_row = await db.execute(select(Organization).where(Organization.slug == "mssu"))
         org = org_row.scalar_one_or_none()
         if not org:
             org = Organization(
                 id=str(uuid.uuid4()),
-                name="StillMind Default Organization",
-                slug="default",
-                contact_email="support@stillmind.com",
-                settings={"theme": "default"},
+                name="Ratan Maharashtra State Skills University",
+                slug="mssu",
+                domain="mssu.ac.in",
+                contact_email="admin@mssu.ac.in",
+                settings={"theme": "institutional"},
             )
             db.add(org)
             await db.flush()
@@ -86,7 +87,7 @@ async def seed_data() -> None:
                 User(
                     id=admin_id,
                     organization_id=org_id,
-                    email="admin@stillmind.edu",
+                    email="tejas.bhor@mssu.ac.in",
                     password_hash=hash_password("admin123"),
                     role="admin",
                     status="ACTIVE",
@@ -94,7 +95,7 @@ async def seed_data() -> None:
                 User(
                     id=counselor_id,
                     organization_id=org_id,
-                    email="counselor@stillmind.edu",
+                    email="meera.rao@mssu.ac.in",
                     password_hash=hash_password("counselor123"),
                     role="counselor",
                     status="ACTIVE",
@@ -102,7 +103,7 @@ async def seed_data() -> None:
                 User(
                     id=student_id,
                     organization_id=org_id,
-                    email="student@stillmind.edu",
+                    email="2023000051@mssu.ac.in",
                     password_hash=hash_password("student123"),
                     role="student",
                     status="ACTIVE",
@@ -110,7 +111,7 @@ async def seed_data() -> None:
                 User(
                     id=student2_id,
                     organization_id=org_id,
-                    email="student2@stillmind.edu",
+                    email="2023000052@mssu.ac.in",
                     password_hash=hash_password("student123"),
                     role="student",
                     status="ACTIVE",
@@ -318,10 +319,10 @@ async def seed_data() -> None:
 
         # RBAC permissions/roles are seeded on API startup (`main.py` lifespan).
         log.info("seed_complete")
-        log.info("accounts", email="admin@stillmind.edu", password="admin123")
-        log.info("accounts", email="counselor@stillmind.edu", password="counselor123")
-        log.info("accounts", email="student@stillmind.edu", password="student123")
-        log.info("accounts", email="student2@stillmind.edu", password="student123")
+        log.info("accounts", email="tejas.bhor@mssu.ac.in", password="admin123")
+        log.info("accounts", email="meera.rao@mssu.ac.in", password="counselor123")
+        log.info("accounts", email="2023000051@mssu.ac.in", password="student123")
+        log.info("accounts", email="2023000052@mssu.ac.in", password="student123")
 
 
 if __name__ == "__main__":

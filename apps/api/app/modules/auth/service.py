@@ -438,9 +438,16 @@ class AuthService:
     # ------------------------------------------------------------------
     # Google OAuth
     # ------------------------------------------------------------------
-    async def process_google_user(self, db: AsyncSession, user_info: dict) -> dict:
-        """Handle user login/registration via Google."""
-        email = user_info.get("email").lower().strip()
+    async def process_google_user(
+        self, db: AsyncSession, user_info: dict, role: str = "student", org_slug: Optional[str] = None
+    ) -> dict:
+        """
+        Processes a Google login:
+        1. Find user by google_id or email
+        2. Create user if not exists (Auto-link if email matches)
+        3. Issue tokens
+        """
+        email = user_info.get("email")
         google_id = user_info.get("sub")
         full_name = user_info.get("name", "Google User")
         avatar_url = user_info.get("picture")
@@ -459,15 +466,26 @@ class AuthService:
                 user.google_id = google_id
                 if not user.avatar_url:
                     user.avatar_url = avatar_url
-            else:
-                # 3. Create new student user
+                # 3. Create new user
                 user_id = str(uuid.uuid4())
-                org_id = await self._resolve_registration_org_id(db, StudentRegisterRequest(email=email, password="", full_name=full_name)) # Dummy request for org resolution
+                
+                # Extract domain for institutional isolation
+                domain = email.split('@')[-1].lower() if '@' in email else None
+                org_id = None
+                
+                if domain:
+                    # Try to find org by domain
+                    r = await db.execute(select(Organization.id).where(Organization.domain == domain))
+                    org_id = r.scalar_one_or_none()
+                
+                if not org_id:
+                    # Fallback to standard resolution (using org_slug from session if available)
+                    org_id = await self._resolve_registration_org_id(db, StudentRegisterRequest(email=email, full_name=full_name, organization_slug=org_slug))
                 
                 user = User(
                     id=user_id,
                     organization_id=org_id,
-                    role="student",
+                    role=role,
                     email=email,
                     google_id=google_id,
                     avatar_url=avatar_url,
@@ -476,14 +494,24 @@ class AuthService:
                 db.add(user)
                 await db.flush() # Ensure user exists before profile is added
                 
-                # Also create student profile
-                profile = StudentProfile(
-                    id=str(uuid.uuid4()),
-                    user_id=user_id,
-                    full_name=full_name,
-                    profile_status="ACTIVE", # Auto-activate Google users
-                )
-                db.add(profile)
+                # 4. Create role-specific profile
+                if role == "student":
+                    profile = StudentProfile(
+                        id=str(uuid.uuid4()),
+                        user_id=user_id,
+                        full_name=full_name,
+                        profile_status="ACTIVE", # Auto-activate Google users
+                    )
+                    db.add(profile)
+                elif role == "counselor":
+                    from app.models.counselor_profile import CounselorProfile
+                    profile = CounselorProfile(
+                        id=str(uuid.uuid4()),
+                        user_id=user_id,
+                        full_name=full_name,
+                    )
+                    db.add(profile)
+                # Admins don't always have a separate profile table, or it's handled via generic profiles
             
             await db.commit()
             await db.refresh(user)

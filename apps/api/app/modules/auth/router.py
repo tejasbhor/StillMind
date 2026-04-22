@@ -154,8 +154,13 @@ async def me(user=Depends(get_current_user), db: AsyncSession = Depends(get_db))
 # Google OAuth
 # ------------------------------------------------------------------
 @router.get("/login/google", summary="Initiate Google OAuth flow")
-async def login_google(request: Request):
+async def login_google(request: Request, role: str = "student", org: Optional[str] = None):
     """Redirect user to Google login page."""
+    # Store context in session for the callback
+    request.session["oauth_role"] = role
+    if org:
+        request.session["oauth_org"] = org
+        
     redirect_uri = settings.GOOGLE_CALLBACK_URL
     return await oauth.google.authorize_redirect(request, redirect_uri)
 
@@ -171,7 +176,11 @@ async def google_callback(
         if not user_info:
             raise ValueError("No userinfo in token")
             
-        result = await _svc.process_google_user(db, user_info)
+        # Retrieve stored context
+        role = request.session.pop("oauth_role", "student")
+        org_slug = request.session.pop("oauth_org", None)
+            
+        result = await _svc.process_google_user(db, user_info, role=role, org_slug=org_slug)
         
         # Set refresh token in cookie
         _set_refresh_cookie(response, result["refresh_token"])
