@@ -359,6 +359,9 @@ export const counselorApi = {
   getStudentAssessments: (studentId: string, limit = 20, offset = 0) => 
     apiFetch<{ data: any[] }>(`/counselors/me/students/${studentId}/assessments?limit=${limit}&offset=${offset}`),
   
+  updateCapacity: (data: { is_active?: boolean; max_active_cases?: number }) =>
+    apiFetch<{ data: any }>("/counselors/me/capacity", { method: "PATCH", body: JSON.stringify(data) }),
+
   // Session Actions
   markNoShow: (sessionId: string) =>
     apiFetch<{ data: any }>(`/counselors/sessions/${sessionId}/mark-no-show`, { method: "POST" }),
@@ -391,6 +394,7 @@ export interface AdminCounselor {
   max_active_cases?: number;
   is_active: boolean;
   assigned_students: number;
+  specialties?: string[];
 }
 
 export interface AdminStudent {
@@ -400,6 +404,7 @@ export interface AdminStudent {
   profile_status: string;
   last_activity: string | null;
   assigned_counselor: string | null;
+  allocation_id: string | null;
 }
 
 export interface SystemAlert {
@@ -417,7 +422,7 @@ export const adminApi = {
   getCounselors: (limit = 20, offset = 0, is_active?: boolean, search?: string) => 
     apiFetch<any>(`/admin/counselors?limit=${limit}&offset=${offset}${is_active !== undefined ? `&is_active=${is_active}` : ''}${search ? `&search=${search}` : ''}`),
   getCounselor: (counselorId: string) => apiFetch<any>(`/admin/counselors/${counselorId}`),
-  createCounselor: (data: { email: string; full_name: string; password?: string; max_slots_day?: number }) => 
+  createCounselor: (data: { email: string; full_name: string; password?: string; max_slots_day?: number; specialties?: string[] }) => 
     apiFetch<any>("/admin/counselors", { method: "POST", body: JSON.stringify(data) }),
   activateCounselor: (counselorId: string) => 
     apiFetch<any>(`/admin/counselors/${counselorId}/status?is_active=true`, { method: "PATCH" }),
@@ -431,6 +436,8 @@ export const adminApi = {
     apiFetch<any>(`/admin/counselors/${counselorId}`, { method: "DELETE" }),
   reassignCounselor: (data: { from_counselor_id: string; to_counselor_id: string; reason?: string }) => 
     apiFetch<any>("/admin/counselors/reassign", { method: "POST", body: JSON.stringify(data) }),
+  reassignAllocation: (data: { allocation_id: string; to_counselor_id: string; reason?: string }) =>
+    apiFetch<any>("/admin/allocations/reassign", { method: "POST", body: JSON.stringify(data) }),
   
   // Student Management - PRD §9.1 (Limited view)
   getStudents: (limit = 20, offset = 0, status?: string) => 
@@ -441,6 +448,7 @@ export const adminApi = {
   updateOrganization: (data: {
     name?: string;
     contact_email?: string;
+    domain_whitelist?: string[];
     settings?: Record<string, unknown>;
   }) =>
     apiFetch<any>("/admin/organization", { method: "PATCH", body: JSON.stringify(data) }),
@@ -455,7 +463,10 @@ export const adminApi = {
   getAllocationWeights: () => apiFetch<any>("/admin/config/allocation-weights"),
   updateAllocationWeights: (data: any) => 
     apiFetch<any>("/admin/config/allocation-weights", { method: "PUT", body: JSON.stringify(data) }),
-  
+  getSystemSettings: () => apiFetch<any>("/admin/config/system-settings"),
+  updateSystemSettings: (data: any) =>
+    apiFetch<any>("/admin/config/system-settings", { method: "PUT", body: JSON.stringify(data) }),
+
   // Analytics - PRD §9.3
   getRiskDistribution: () => apiFetch<any>("/admin/analytics/risk-distribution"),
   getResourceUtilization: () => apiFetch<any>("/admin/analytics/resource-utilization"),

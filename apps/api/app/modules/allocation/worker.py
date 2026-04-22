@@ -7,8 +7,11 @@ from sqlalchemy import select, and_, func
 from app.core.database import AsyncSessionLocal
 from app.models.student_profile import StudentProfile
 from app.models.counselor_profile import CounselorProfile
+from app.models.user import User
+from app.modules.notifications import service as notification_service
 from app.models.allocation import Allocation
 from app.models.risk_log import RiskLog
+from app.models.admin_config import AdminConfig
 from app.modules.counselor.allocator import compute_priority_score
 from app.services.audit_service import audit
 
@@ -61,13 +64,22 @@ async def run_allocation_cycle(ctx):
                 if r.student_id not in student_latest_logs or r.created_at > student_latest_logs[r.student_id].created_at:
                     student_latest_logs[r.student_id] = r
             
-            # Rank students
+            # Rank students using dynamic weights
+            config_res = await db.execute(select(AdminConfig).where(AdminConfig.config_key == "allocation_weights"))
+            w_config = config_res.scalar_one_or_none()
+            weights = w_config.config_value.get("weights") if w_config else None
+            
             ranked_students = []
             for student_id, log_rec in student_latest_logs.items():
                 waiting_days = (now_utc - getattr(log_rec, 'created_at', now_utc)).days
                 waiting_days = max(0, waiting_days)
                 
-                score = compute_priority_score(float(log_rec.cri_score), log_rec.trend, waiting_days)
+                score = compute_priority_score(
+                    float(log_rec.cri_score), 
+                    log_rec.trend, 
+                    waiting_days,
+                    weights=weights
+                )
                 ranked_students.append({
                     "student_id": student_id,
                     "risk_level": log_rec.risk_level,
@@ -79,24 +91,53 @@ async def run_allocation_cycle(ctx):
             
             # Allocation loop
             allocations_made = 0
+            from app.modules.counselor.allocator import compute_match_score
+            
             for student in ranked_students:
                 if not available_counselors:
                     break # No capacity left
                     
-                # Pick round-robin counselor with most remaining capacity
-                selected_counselor = sorted(available_counselors, key=lambda c: c.max_active_cases - c.current_active_cases, reverse=True)[0]
+                # 1. Fetch student concerns
+                s_profile_res = await db.execute(
+                    select(StudentProfile).where(StudentProfile.id == student["student_id"])
+                )
+                s_profile = s_profile_res.scalar_one_or_none()
+                concerns = s_profile.clinical_concerns if s_profile else []
+
+                # 2. Find best matching counselor based on (Match Score + Capacity weight)
+                def get_counselor_score(c: CounselorProfile):
+                    match_score = compute_match_score(concerns, c.specialties or [])
+                    capacity_score = (c.max_active_cases - c.current_active_cases) / c.max_active_cases
+                    return (match_score * 0.7) + (capacity_score * 0.3)
+
+                available_counselors.sort(key=get_counselor_score, reverse=True)
+                selected_counselor = available_counselors[0]
                 
                 new_allocation = Allocation(
                     id=str(uuid.uuid4()),
                     student_id=student["student_id"],
-                    counselor_id=selected_counselor.id, # the primary key of counselor_profiles
+                    counselor_id=selected_counselor.id,
                     priority_score=student["score"],
                     status="ASSIGNED",
-                    reason_summary=f"Matched automatically. Priority {student['score']:.2f} ({student['risk_level']})"
+                    reason_summary=f"Matched automatically. Priority {student['score']:.2f}. Match quality: {compute_match_score(concerns, selected_counselor.specialties or []):.1f}"
                 )
                 db.add(new_allocation)
                 selected_counselor.current_active_cases += 1
                 allocations_made += 1
+                
+                # 3. Notify Student (Email)
+                try:
+                    user_stmt = select(User.email).where(User.id == s_profile.user_id)
+                    user_res = await db.execute(user_stmt)
+                    to_email = user_res.scalar()
+                    if to_email:
+                        await notification_service.send_counselor_assigned(
+                            to_email=to_email,
+                            counselor_name=selected_counselor.full_name,
+                            name=s_profile.full_name
+                        )
+                except Exception as e:
+                    log.error("allocation_email_failed", error=str(e), student_id=student["student_id"])
                 
                 if selected_counselor.current_active_cases >= selected_counselor.max_active_cases:
                     available_counselors.remove(selected_counselor)

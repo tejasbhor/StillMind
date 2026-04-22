@@ -1,6 +1,6 @@
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select, and_
+from sqlalchemy import select, and_, func
 from typing import List
 import datetime
 
@@ -8,6 +8,7 @@ from app.core.database import get_db
 from app.core.dependencies import require_counselor
 from app.core.responses import success_response
 from app.modules.counselor.service import CounselorService
+from app.modules.counselor.schemas import CapacityUpdateRequest
 from app.modules.session.service import SessionService
 from app.models.counselor_profile import CounselorProfile
 from app.models.student_profile import StudentProfile
@@ -51,6 +52,48 @@ async def get_capacity(
 
     capacity = await _svc.get_capacity(db, profile_id)
     return success_response(data=capacity)
+
+
+@router.patch("/capacity", response_model=dict, summary="Update counselor capacity settings")
+async def update_capacity(
+    req: CapacityUpdateRequest,
+    user=Depends(require_counselor),
+    db: AsyncSession = Depends(get_db),
+):
+    """Self-service update for availability and case load limits."""
+    profile_stmt = select(CounselorProfile).where(CounselorProfile.user_id == user.id)
+    profile_res = await db.execute(profile_stmt)
+    profile = profile_res.scalar_one_or_none()
+    
+    if not profile:
+        raise HTTPException(status_code=404, detail="Counselor profile not found")
+
+    if req.is_active is not None:
+        profile.is_active = req.is_active
+    
+    if req.max_active_cases is not None:
+        # Check current load
+        active_count_res = await db.execute(
+            select(func.count(Allocation.id)).where(
+                and_(
+                    Allocation.counselor_id == profile.id,
+                    Allocation.status.in_(["ASSIGNED", "CONFIRMED", "IN_PROGRESS"])
+                )
+            )
+        )
+        current_active = active_count_res.scalar() or 0
+        
+        if req.max_active_cases < current_active:
+             raise HTTPException(
+                status_code=400, 
+                detail=f"Cannot reduce capacity below current active cases ({current_active})"
+            )
+        
+        profile.max_active_cases = req.max_active_cases
+        profile.max_slots_day = req.max_active_cases
+
+    await db.commit()
+    return success_response(message="Capacity settings updated successfully")
 
 
 @router.post("/auto-allocate", response_model=dict, summary="Trigger auto-allocator")
@@ -105,23 +148,34 @@ async def get_counselor_sessions(
 
     # Count total
     count_stmt = (
-        select(Session).join(Allocation).where(Allocation.counselor_id == profile_id)
+        select(func.count(Session.id)).join(Allocation).where(Allocation.counselor_id == profile_id)
     )
     total_result = await db.execute(count_stmt)
-    total = len(total_result.scalars().all())
+    total = total_result.scalar() or 0
 
     sessions = []
     for session, alloc, student_name in rows:
+        # Get risk level for student
+        risk_stmt = (
+            select(RiskLog.risk_level)
+            .where(RiskLog.student_id == alloc.student_id)
+            .order_by(RiskLog.created_at.desc())
+            .limit(1)
+        )
+        risk_res = await db.execute(risk_stmt)
+        risk_level = risk_res.scalar_one_or_none() or "GREEN"
+
         sessions.append(
             {
                 "session_id": session.id,
                 "allocation_id": session.allocation_id,
                 "student_name": student_name,
                 "student_id": alloc.student_id,
-                "session_date": session.session_date.isoformat()
+                "scheduled_at": session.session_date.isoformat()
                 if session.session_date
                 else None,
                 "status": session.status,
+                "risk_level": risk_level,
                 "created_at": session.created_at.isoformat()
                 if hasattr(session.created_at, "isoformat")
                 else str(session.created_at),
@@ -154,7 +208,7 @@ async def get_student_case(
                 Allocation.student_id == student_id,
                 Allocation.counselor_id == profile_id,
                 Allocation.status.in_(
-                    ["ASSIGNED", "CONFIRMED", "COMPLETED"]
+                    ["ASSIGNED", "CONFIRMED", "COMPLETED", "IN_PROGRESS"]
                 ),
             )
         )
@@ -234,7 +288,7 @@ async def get_student_risk(
                 Allocation.student_id == student_id,
                 Allocation.counselor_id == profile_id,
                 Allocation.status.in_(
-                    ["ASSIGNED", "CONFIRMED", "COMPLETED"]
+                    ["ASSIGNED", "CONFIRMED", "COMPLETED", "IN_PROGRESS"]
                 ),
             )
         )
@@ -310,6 +364,7 @@ async def get_student_timeline(
             and_(
                 Allocation.student_id == student_id,
                 Allocation.counselor_id == profile_id,
+                Allocation.status.in_(["ASSIGNED", "CONFIRMED", "COMPLETED", "IN_PROGRESS"]),
             )
         )
     )
@@ -429,6 +484,7 @@ async def get_student_assessments(
             and_(
                 Allocation.student_id == student_id,
                 Allocation.counselor_id == profile_id,
+                Allocation.status.in_(["ASSIGNED", "CONFIRMED", "COMPLETED", "IN_PROGRESS"]),
             )
         )
     )

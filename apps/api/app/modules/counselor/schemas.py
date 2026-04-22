@@ -20,3 +20,7 @@ class WaitlistView(BaseModel):
     matched_counselor_id: Optional[str] = None
     
     model_config = {"from_attributes": True}
+    
+class CapacityUpdateRequest(BaseModel):
+    is_active: Optional[bool] = None
+    max_active_cases: Optional[int] = None

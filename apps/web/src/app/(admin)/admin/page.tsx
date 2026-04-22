@@ -64,7 +64,7 @@ export default function AdminDashboard() {
     const fetchDashboardData = async () => {
       try {
         const [dashRes, riskRes, utilRes, alertsRes] = await Promise.all([
-          api.get<any>("/admin/dashboard"),
+          adminApi.getDashboard(),
           adminApi.getRiskDistribution(),
           adminApi.getResourceUtilization(),
           adminApi.getAlerts()

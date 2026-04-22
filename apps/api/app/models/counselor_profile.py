@@ -16,5 +16,9 @@ class CounselorProfile(Base):
     current_active_cases: Mapped[int] = mapped_column(Integer, default=0)  # Currently assigned cases
     working_hours: Mapped[dict | None] = mapped_column(JSONB)
     # {start: "09:00", end: "17:00", timezone: "Asia/Kolkata"}
+    
+    specialties: Mapped[list | None] = mapped_column(JSONB, default=list)
+    # ["ANXIETY", "DEPRESSION", "ACADEMIC_STRESS", "RELATIONSHIPS", "SUBSTANCE_ABUSE", "TRAUMA"]
+    
     is_active: Mapped[bool] = mapped_column(Boolean, default=True)
     created_at: Mapped[object] = mapped_column(TIMESTAMP(timezone=True), server_default=func.now())

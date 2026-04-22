@@ -200,6 +200,7 @@ class AuthService:
             )
 
             db.add(user)
+            await db.flush()  # Ensure user is created before profile
             db.add(profile)
             
             await self._log_security_event(

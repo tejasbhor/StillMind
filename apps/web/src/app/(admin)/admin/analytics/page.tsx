@@ -33,9 +33,9 @@ export default function AdminAnalyticsPage() {
     return <div className="p-8 text-center font-serif text-[#3D5A54]">Loading analytics...</div>;
   }
 
-  const completionRate = (engagement?.assessment_completion_rate ?? 0.82) * 100;
+  const completionRate = engagement?.assessment_completion_rate ?? 82;
   const noShowRate = engagement?.no_show_rate ?? 14;
-  const dropOffRate = (engagement?.drop_off_rate ?? 0.07) * 100;
+  const dropOffRate = engagement?.drop_off_rate ?? 7;
 
   return (
     <div className="flex flex-col gap-6">

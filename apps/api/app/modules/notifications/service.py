@@ -255,6 +255,44 @@ async def send_appointment_confirmation_required(
     )
 
 
+async def send_counselor_assigned(
+    to_email: str,
+    counselor_name: str,
+    name: str = None,
+    dashboard_url: str = None
+):
+    """Notify student that a counselor has been assigned."""
+    await send_templated_email(
+        to_email=to_email,
+        template="counselor_assigned",
+        subject="StillMind: A Counselor has been assigned to you",
+        context={
+            "counselor_name": counselor_name,
+            "name": name or to_email.split('@')[0],
+            "dashboard_url": dashboard_url or f"{settings.FRONTEND_URL}/dashboard"
+        }
+    )
+
+
+async def send_counselor_reassigned(
+    to_email: str,
+    counselor_name: str,
+    name: str = None,
+    dashboard_url: str = None
+):
+    """Notify student that their case has been reassigned to a new counselor."""
+    await send_templated_email(
+        to_email=to_email,
+        template="counselor_reassigned",
+        subject="StillMind: Your Counselor has been updated",
+        context={
+            "counselor_name": counselor_name,
+            "name": name or to_email.split('@')[0],
+            "dashboard_url": dashboard_url or f"{settings.FRONTEND_URL}/dashboard"
+        }
+    )
+
+
 # ─── Legacy dispatcher (for backward compatibility) ──────────────────────────
 
 async def dispatch_notification(user_id: str, email: str, template: str, context: dict):

@@ -33,7 +33,8 @@ async def reset_and_seed():
         enums = [
             "chat_conversation_kind", "chat_conversation_status", 
             "chat_participant_role", "assessment_type", "risk_level",
-            "user_role", "user_status", "student_profile_status"
+            "user_role", "user_status", "student_profile_status",
+            "allocation_status"
         ]
         for enum in enums:
             await db.execute(text(f"DROP TYPE IF EXISTS {enum} CASCADE"))

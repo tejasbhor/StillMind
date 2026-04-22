@@ -1,0 +1,25 @@
+{% extends "base.html" %}
+
+{% block content %}
+<h1>Counselor Reassigned</h1>
+<p>Hello {{ name }},</p>
+<p>To ensure you continue receiving the best possible support, we have reassigned your case to a new counselor.</p>
+
+<div class="highlight-box">
+    <h2>Meet {{ counselor_name }}</h2>
+    <p>Your new counselor has been briefed on your progress and is ready to continue your support journey.</p>
+</div>
+
+<p>Your previous conversation history and clinical records have been securely shared with your new counselor to ensure a smooth transition.</p>
+
+<div style="text-align: center;">
+    <a href="{{ dashboard_url }}" class="button">Go to Dashboard</a>
+</div>
+
+<p>If you have any questions about this transition, please reach out to our support team.</p>
+
+<div class="divider"></div>
+<p class="small-text">
+    Reassignments typically occur due to counselor availability changes or to better match your clinical needs with a specialist.
+</p>
+{% endblock %}

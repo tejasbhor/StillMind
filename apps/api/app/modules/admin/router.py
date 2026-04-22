@@ -4,13 +4,17 @@ from sqlalchemy import select, func, and_, or_, desc, extract
 from typing import Optional, Tuple
 import secrets
 import uuid
+import structlog
 
-from pydantic import BaseModel, Field, AliasChoices
+log = structlog.get_logger(__name__)
+
+from pydantic import BaseModel, Field, AliasChoices, ConfigDict
 
 from app.core.database import get_db
 from app.core.dependencies import require_admin
 from app.core.responses import success_response, error_response
 from app.core.security import hash_password
+from app.modules.notifications import service as notification_service
 from app.models.user import User
 from app.models.organization import Organization
 from app.models.student_profile import StudentProfile
@@ -30,6 +34,7 @@ router = APIRouter(prefix="/admin", tags=["Admin Management"])
 
 
 class CreateCounselorRequest(BaseModel):
+    model_config = ConfigDict(populate_by_name=True)
     email: str
     full_name: str
     password: Optional[str] = None
@@ -37,9 +42,11 @@ class CreateCounselorRequest(BaseModel):
         default=10,
         validation_alias=AliasChoices("max_active_cases", "max_slots_day"),
     )
+    specialties: Optional[list[str]] = []
 
 
 class UpdateCounselorCapacityRequest(BaseModel):
+    model_config = ConfigDict(populate_by_name=True)
     max_active_cases: int = Field(
         ...,
         validation_alias=AliasChoices("max_active_cases", "max_slots_day"),
@@ -48,6 +55,12 @@ class UpdateCounselorCapacityRequest(BaseModel):
 
 class ReassignCounselorRequest(BaseModel):
     from_counselor_id: str
+    to_counselor_id: str
+    reason: str = "Manual reassignment"
+
+
+class ReassignAllocationRequest(BaseModel):
+    allocation_id: str
     to_counselor_id: str
     reason: str = "Manual reassignment"
 
@@ -110,20 +123,28 @@ async def _get_student_for_org(
 
 
 async def _ensure_default_configs(db: AsyncSession):
-    """Ensure all default configs exist in database."""
+    """Ensure all default configs exist in database (idempotent)."""
     for key, value in DEFAULT_CONFIGS.items():
-        result = await db.execute(
-            select(AdminConfig).where(AdminConfig.config_key == key)
-        )
-        existing = result.scalar_one_or_none()
-        if not existing:
-            config = AdminConfig(
-                id=str(uuid.uuid4()),
-                config_key=key,
-                config_value=value,
-                description=f"Default config for {key}",
-            )
-            db.add(config)
+        try:
+            # We use a subtransaction to handle potential unique constraint conflicts
+            async with db.begin_nested():
+                result = await db.execute(
+                    select(AdminConfig).where(AdminConfig.config_key == key)
+                )
+                existing = result.scalar_one_or_none()
+                if not existing:
+                    config = AdminConfig(
+                        id=str(uuid.uuid4()),
+                        config_key=key,
+                        config_value=value,
+                        description=f"Default config for {key}",
+                    )
+                    db.add(config)
+                    await db.flush()
+        except Exception as e:
+            # If already exists or other error, we skip and log
+            log.debug("config_seed_skipped", key=key, error=str(e))
+            continue
     await db.commit()
 
 
@@ -172,7 +193,7 @@ async def list_counselors(
             select(func.count(Allocation.id)).where(
                 and_(
                     Allocation.counselor_id == profile.id,
-                    Allocation.status.in_(["ASSIGNED", "CONFIRMED"]),
+                    Allocation.status.in_(["ASSIGNED", "CONFIRMED", "IN_PROGRESS"]),
                 )
             )
         )
@@ -191,6 +212,7 @@ async def list_counselors(
                 "assigned_students": active_cases,
                 "current_active_cases": active_cases,
                 "available_slots": max(0, profile.max_active_cases - active_cases),
+                "specialties": profile.specialties or [],
                 "created_at": profile.created_at.isoformat()
                 if hasattr(profile.created_at, "isoformat")
                 else str(profile.created_at),
@@ -215,7 +237,7 @@ async def get_counselor(
         select(func.count(Allocation.id)).where(
             and_(
                 Allocation.counselor_id == profile.id,
-                Allocation.status.in_(["ASSIGNED", "CONFIRMED"]),
+                Allocation.status.in_(["ASSIGNED", "CONFIRMED", "IN_PROGRESS"]),
             )
         )
     )
@@ -268,19 +290,25 @@ async def create_counselor(
         organization_id=org_id,
         role="counselor",
         email=email,
+        full_name=req.full_name,
         password_hash=hash_password(plain_password),
         status="ACTIVE",
     )
+    log.info("creating_counselor_user", user_id=user_id)
+    db.add(new_user)
+    await db.commit()
+    await db.refresh(new_user)
+    log.info("counselor_user_created", user_id=user_id)
+
     profile = CounselorProfile(
         id=profile_id,
         user_id=user_id,
         full_name=req.full_name,
         max_slots_day=req.max_active_cases,
         max_active_cases=req.max_active_cases,
+        specialties=req.specialties,
         is_active=True,
     )
-
-    db.add(new_user)
     db.add(profile)
 
     await audit.log(
@@ -512,7 +540,7 @@ async def reassign_counselor_students(
     user=Depends(require_admin),
     db: AsyncSession = Depends(get_db),
 ):
-    """Reassign all students from one counselor to another."""
+    """Reassign all students from one counselor to another with full state migration."""
     org_id = _admin_org_id(user)
     from_profile = await _get_counselor_for_org(db, org_id, req.from_counselor_id)
     if not from_profile:
@@ -527,46 +555,84 @@ async def reassign_counselor_students(
             status_code=400, detail="Source and target counselors must be different"
         )
 
-    # Get active allocations count
+    # Get active allocations
     active_result = await db.execute(
-        select(func.count(Allocation.id)).where(
-            and_(
-                Allocation.counselor_id == req.from_counselor_id,
-                Allocation.status.in_(["ASSIGNED", "CONFIRMED", "IN_PROGRESS"]),
-            )
-        )
-    )
-    active_count = active_result.scalar() or 0
-
-    # Check target capacity
-    target_active_result = await db.execute(
-        select(func.count(Allocation.id)).where(
-            and_(
-                Allocation.counselor_id == req.to_counselor_id,
-                Allocation.status.in_(["ASSIGNED", "CONFIRMED", "IN_PROGRESS"]),
-            )
-        )
-    )
-    target_active_count = target_active_result.scalar() or 0
-
-    available_slots = to_profile.max_active_cases - target_active_count
-    if active_count > available_slots:
-        raise HTTPException(
-            status_code=409,
-            detail=f"Target counselor has only {available_slots} available slots, but source has {active_count} active allocations",
-        )
-
-    # Perform reassignment
-    await db.execute(
-        Allocation.__table__.update()
+        select(Allocation)
         .where(
             and_(
                 Allocation.counselor_id == req.from_counselor_id,
                 Allocation.status.in_(["ASSIGNED", "CONFIRMED", "IN_PROGRESS"]),
             )
         )
-        .values(counselor_id=req.to_counselor_id)
+        .options(selectinload(Allocation.student_profile))
     )
+    active_allocations = active_result.scalars().all()
+    active_count = len(active_allocations)
+
+    if active_count == 0:
+        return success_response(message="No active students to reassign")
+
+    # Check target capacity
+    current_target_cases = to_profile.current_active_cases
+    available_slots = to_profile.max_active_cases - current_target_cases
+    if active_count > available_slots:
+        raise HTTPException(
+            status_code=409,
+            detail=f"Target counselor has only {available_slots} available slots, but source has {active_count} active allocations",
+        )
+
+    from_user_id = from_profile.user_id
+    to_user_id = to_profile.user_id
+
+    # 1. Update Allocations
+    for alloc in active_allocations:
+        alloc.counselor_id = req.to_counselor_id
+        
+        # 2. Update Chat Participants
+        chat_result = await db.execute(
+            select(ChatConversation).where(ChatConversation.allocation_id == alloc.id)
+        )
+        chat = chat_result.scalar_one_or_none()
+        if chat:
+            # Update the counselor participant
+            await db.execute(
+                ChatConversationParticipant.__table__.update()
+                .where(
+                    and_(
+                        ChatConversationParticipant.conversation_id == chat.id,
+                        ChatConversationParticipant.user_id == from_user_id
+                    )
+                )
+                .values(user_id=to_user_id)
+            )
+
+        # 3. Notify Student (Internal System Notification)
+        db.add(Notification(
+            user_id=alloc.student_profile.user_id,
+            title="Counselor Reassigned",
+            content=f"Your counselor has been changed to {to_profile.full_name}. You can continue your conversations with them.",
+            kind="SYSTEM",
+            priority="MEDIUM"
+        ))
+
+        # 4. Notify Student (Email)
+        try:
+            user_stmt = select(User.email).where(User.id == alloc.student_profile.user_id)
+            user_res = await db.execute(user_stmt)
+            to_email = user_res.scalar()
+            if to_email:
+                # Background tasks are better but for now let's fire and log
+                await notification_service.send_counselor_reassigned(
+                    to_email=to_email,
+                    counselor_name=to_profile.full_name,
+                    name=alloc.student_profile.full_name
+                )
+        except Exception as e:
+            log.error("reassign_email_failed", error=str(e), student_id=alloc.student_id)
+
+    # 4. Update Counselor Counters
+    from_profile.current_active_cases = max(0, from_profile.current_active_cases - active_count)
+    to_profile.current_active_cases += active_count
 
     await audit.log(
         db,
@@ -584,9 +650,112 @@ async def reassign_counselor_students(
     await db.commit()
 
     return success_response(
-        message=f"Successfully reassigned {active_count} students",
+        message=f"Successfully reassigned {active_count} students to {to_profile.full_name}",
         data={"reassigned_count": active_count},
     )
+
+
+@router.post("/allocations/reassign", summary="Reassign a specific student to a counselor")
+async def reassign_single_allocation(
+    req: ReassignAllocationRequest,
+    user=Depends(require_admin),
+    db: AsyncSession = Depends(get_db),
+):
+    """Reassign a single student allocation to a new counselor."""
+    org_id = _admin_org_id(user)
+    
+    # Get allocation with student profile
+    alloc_result = await db.execute(
+        select(Allocation)
+        .where(Allocation.id == req.allocation_id)
+        .options(selectinload(Allocation.student_profile))
+    )
+    alloc = alloc_result.scalar_one_or_none()
+    if not alloc:
+        raise HTTPException(status_code=404, detail="Allocation not found")
+
+    # Verify organization
+    student_user_result = await db.execute(
+        select(User).where(User.id == alloc.student_profile.user_id)
+    )
+    student_user = student_user_result.scalar_one_or_none()
+    if not student_user or student_user.organization_id != org_id:
+        raise HTTPException(status_code=403, detail="Not authorized for this allocation")
+
+    if alloc.counselor_id == req.to_counselor_id:
+        raise HTTPException(status_code=400, detail="Student is already assigned to this counselor")
+
+    # Get profiles
+    from_profile = await db.get(CounselorProfile, alloc.counselor_id)
+    to_profile = await _get_counselor_for_org(db, org_id, req.to_counselor_id)
+    
+    if not to_profile:
+        raise HTTPException(status_code=404, detail="Target counselor not found")
+        
+    if to_profile.current_active_cases >= to_profile.max_active_cases:
+        raise HTTPException(status_code=409, detail="Target counselor is at full capacity")
+
+    # Perform migration
+    old_counselor_id = alloc.counselor_id
+    alloc.counselor_id = req.to_counselor_id
+    
+    # Update Chat
+    chat_result = await db.execute(
+        select(ChatConversation).where(ChatConversation.allocation_id == alloc.id)
+    )
+    chat = chat_result.scalar_one_or_none()
+    if chat and from_profile:
+        await db.execute(
+            ChatConversationParticipant.__table__.update()
+            .where(
+                and_(
+                    ChatConversationParticipant.conversation_id == chat.id,
+                    ChatConversationParticipant.user_id == from_profile.user_id
+                )
+            )
+            .values(user_id=to_profile.user_id)
+        )
+
+    # Update Counters
+    if from_profile:
+        from_profile.current_active_cases = max(0, from_profile.current_active_cases - 1)
+    to_profile.current_active_cases += 1
+
+    # Notify
+    db.add(Notification(
+        user_id=alloc.student_profile.user_id,
+        title="Counselor Reassigned",
+        content=f"Your counselor has been changed to {to_profile.full_name}.",
+        kind="SYSTEM",
+        priority="MEDIUM"
+    ))
+
+    # 4. Notify Student (Email)
+    try:
+        if student_user and student_user.email:
+            await notification_service.send_counselor_reassigned(
+                to_email=student_user.email,
+                counselor_name=to_profile.full_name,
+                name=alloc.student_profile.full_name
+            )
+    except Exception as e:
+        log.error("reassign_single_email_failed", error=str(e), student_id=alloc.student_id)
+
+    await audit.log(
+        db,
+        action="ALLOCATION_REASSIGNED",
+        actor_id=user.id,
+        actor_role="admin",
+        metadata={
+            "allocation_id": alloc.id,
+            "from_counselor": old_counselor_id,
+            "to_counselor": req.to_counselor_id,
+            "reason": req.reason,
+        },
+    )
+
+    await db.commit()
+    return success_response(message=f"Student reassigned to {to_profile.full_name}")
 
 
 # ─── Student Management ────────────────────────────────────────────────────
@@ -636,6 +805,7 @@ async def list_students(
     alloc_ranked = (
         select(
             Allocation.student_id,
+            Allocation.id.label("allocation_id"),
             CounselorProfile.full_name.label("counselor_name"),
             rn_alloc,
         )
@@ -652,9 +822,11 @@ async def list_students(
     ).subquery()
 
     counselor_sq = (
-        select(alloc_ranked.c.student_id, alloc_ranked.c.counselor_name).where(
-            alloc_ranked.c.rn_alloc == 1
-        )
+        select(
+            alloc_ranked.c.student_id,
+            alloc_ranked.c.allocation_id,
+            alloc_ranked.c.counselor_name,
+        ).where(alloc_ranked.c.rn_alloc == 1)
     ).subquery()
 
     stmt = (
@@ -664,6 +836,7 @@ async def list_students(
             risk_sq.c.risk_level,
             risk_sq.c.cri_score,
             counselor_sq.c.counselor_name,
+            counselor_sq.c.allocation_id,
         )
         .join(User, StudentProfile.user_id == User.id)
         .outerjoin(risk_sq, StudentProfile.id == risk_sq.c.student_id)
@@ -688,7 +861,7 @@ async def list_students(
     rows = result.all()
 
     students = []
-    for profile, email, r_level, cri, counselor_name in rows:
+    for profile, email, r_level, cri, counselor_name, allocation_id in rows:
         sessions_result = await db.execute(
             select(func.count(Allocation.id)).where(
                 and_(
@@ -700,9 +873,9 @@ async def list_students(
         sessions_count = sessions_result.scalar() or 0
 
         last_ts = profile.updated_at or profile.created_at
-        last_activity = (
-            last_ts.isoformat() if hasattr(last_ts, "isoformat") else str(last_ts)
-        )
+        last_activity = ""
+        if last_ts:
+            last_activity = last_ts.isoformat() if hasattr(last_ts, "isoformat") else str(last_ts)
 
         students.append(
             {
@@ -719,13 +892,23 @@ async def list_students(
                 "completed_sessions": sessions_count,
                 "last_activity": last_activity,
                 "assigned_counselor": counselor_name,
+                "allocation_id": allocation_id,
                 "created_at": profile.created_at.isoformat()
-                if hasattr(profile.created_at, "isoformat")
-                else str(profile.created_at),
+                if profile.created_at and hasattr(profile.created_at, "isoformat")
+                else str(profile.created_at or ""),
             }
         )
 
-    return success_response(data=students)
+    # Get total count for pagination
+    total_stmt = (
+        select(func.count(StudentProfile.id))
+        .join(User, StudentProfile.user_id == User.id)
+        .where(User.organization_id == org_id)
+    )
+    total_res = await db.execute(total_stmt)
+    total = total_res.scalar() or 0
+
+    return success_response(data=students, meta={"total": total, "limit": limit, "offset": offset})
 
 
 @router.get("/students/{student_id}", summary="Get student details (admin-safe view)")
@@ -847,6 +1030,55 @@ async def system_health(
                 "error": str(e),
             }
         )
+
+
+@router.get("/dashboard", summary="Aggregated admin dashboard data")
+async def get_admin_dashboard(
+    user=Depends(require_admin),
+    db: AsyncSession = Depends(get_db),
+):
+    """Aggregated stats for the admin home view - PRD §9.3"""
+    org_id = _admin_org_id(user)
+
+    # 1. Basic counts
+    student_count = await db.execute(
+        select(func.count(StudentProfile.id))
+        .join(User, StudentProfile.user_id == User.id)
+        .where(User.organization_id == org_id)
+    )
+    counselor_count = await db.execute(
+        select(func.count(CounselorProfile.id))
+        .join(User, CounselorProfile.user_id == User.id)
+        .where(User.organization_id == org_id)
+    )
+
+    # 2. Avg Wait Time
+    sp_in_org = (
+        select(StudentProfile.id)
+        .join(User, StudentProfile.user_id == User.id)
+        .where(User.organization_id == org_id)
+    )
+    avg_wait_res = await db.execute(
+        select(
+            func.avg(
+                extract("epoch", func.coalesce(Allocation.slot_time, func.now()) - Allocation.created_at) / 86400.0
+            )
+        ).where(
+            and_(
+                Allocation.status.in_(["ASSIGNED", "CONFIRMED"]),
+                Allocation.student_id.in_(sp_in_org),
+            )
+        )
+    )
+    avg_wait = avg_wait_res.scalar() or 0
+
+    return success_response(
+        data={
+            "total_active_students": student_count.scalar(),
+            "total_counselors": counselor_count.scalar(),
+            "average_wait_time_days": round(float(avg_wait), 1),
+        }
+    )
 
 
 # ─── Configuration (Persistent) ────────────────────────────────────────────

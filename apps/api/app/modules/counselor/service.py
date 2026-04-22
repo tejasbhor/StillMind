@@ -96,7 +96,7 @@ to available counselors based on Priority Score and Counselor capacity.
             select(func.count(Allocation.id)).where(
                 and_(
                     Allocation.counselor_id == counselor_id,
-                    Allocation.status.in_(["ASSIGNED", "CONFIRMED"])
+                    Allocation.status.in_(["ASSIGNED", "CONFIRMED", "IN_PROGRESS"])
                 )
             )
         )

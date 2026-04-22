@@ -7,6 +7,7 @@ from app.core.database import AsyncSessionLocal
 from app.models.assessment import Assessment
 from app.models.risk_log import RiskLog
 from app.models.student_profile import StudentProfile
+from app.models.admin_config import AdminConfig
 from app.modules.risk_engine.engine import calculate_cri, determine_risk_level, generate_reasoning, normalize_behavioral
 from app.modules.risk_engine.trend import compute_trend
 from app.services.audit_service import audit
@@ -42,20 +43,41 @@ async def compute_risk_job(ctx, assessment_id: str):
             prev_log = prev_result.scalar_one_or_none()
             prev_cri = float(prev_log.cri_score) if prev_log else None
             
-            # 3. Core Engine computations
+            # 3. Fetch Configs
+            config_res = await db.execute(select(AdminConfig))
+            configs = {c.config_key: c.config_value for c in config_res.scalars().all()}
+            
+            risk_cfg = configs.get("risk_thresholds", {})
+            # Handle nested structure if saved by Admin UI, or flat if default
+            thresholds = risk_cfg.get("risk_thresholds") if "risk_thresholds" in risk_cfg else risk_cfg
+            overrides = risk_cfg.get("override_rules", {})
+            
+            # Use system_settings for weights if not in specific risk_engine config (currently we use a default dict or settings)
+            # Actually, let's use the one in settings as base and override if we add it to AdminConfig later.
+            from app.core.config import settings
+            weights = settings.RISK_CRI_WEIGHTS
+
+            # 4. Core Engine computations
             behavioral_score = normalize_behavioral(
                 sleep=assessment.sleep_score,
                 stress=assessment.academic_stress_score,
                 isolation=assessment.social_isolation_level
             )
             
-            cri = calculate_cri(assessment.phq9_total, assessment.gad7_total, behavioral_score)
+            cri = calculate_cri(
+                assessment.phq9_total, 
+                assessment.gad7_total, 
+                behavioral_score,
+                weights=weights
+            )
             
             risk_level = determine_risk_level(
                 cri=cri, 
                 phq9_q9=assessment.q9_flag, 
                 sleep=assessment.sleep_score, 
-                stress=assessment.academic_stress_score
+                stress=assessment.academic_stress_score,
+                thresholds=thresholds,
+                overrides=overrides
             )
             
             reasons = generate_reasoning(

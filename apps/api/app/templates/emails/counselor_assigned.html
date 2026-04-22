@@ -1,0 +1,25 @@
+{% extends "base.html" %}
+
+{% block content %}
+<h1>Counselor Assigned</h1>
+<p>Hello {{ name }},</p>
+<p>We've reviewed your assessment and have assigned you a counselor to support your well-being journey.</p>
+
+<div class="highlight-box">
+    <h2>Meet {{ counselor_name }}</h2>
+    <p>Your counselor will be available for sessions and messaging to help you navigate through your concerns.</p>
+</div>
+
+<p>You can now log in to your dashboard to view your counselor's profile and start a conversation.</p>
+
+<div style="text-align: center;">
+    <a href="{{ dashboard_url }}" class="button">Go to Dashboard</a>
+</div>
+
+<p>We're here to support you every step of the way.</p>
+
+<div class="divider"></div>
+<p class="small-text">
+    StillMind is a privacy-first platform. Your data is encrypted and only accessible to your assigned counselor and clinical staff.
+</p>
+{% endblock %}

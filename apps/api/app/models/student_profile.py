@@ -51,6 +51,9 @@ class StudentProfile(Base):
     guardian_contact: Mapped[dict | None] = mapped_column(JSONB)
     # {name, phone, relation}
 
+    clinical_concerns: Mapped[list | None] = mapped_column(JSONB, default=list)
+    # ["ANXIETY", "DEPRESSION", "ACADEMIC_STRESS", "RELATIONSHIPS", "SUBSTANCE_ABUSE", "TRAUMA"]
+
     created_at: Mapped[object] = mapped_column(
         TIMESTAMP(timezone=True), server_default=func.now()
     )

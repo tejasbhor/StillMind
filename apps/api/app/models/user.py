@@ -25,3 +25,7 @@ class User(Base):
 
     # Many-to-many with roles (relationship defined in rbac.py)
     roles = relationship("Role", secondary="user_roles", back_populates="users")
+
+    # One-to-one profiles
+    counselor_profile = relationship("CounselorProfile", backref="user", uselist=False, cascade="all, delete-orphan")
+    student_profile = relationship("StudentProfile", backref="user", uselist=False, cascade="all, delete-orphan")

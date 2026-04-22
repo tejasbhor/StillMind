@@ -20,7 +20,7 @@ class Allocation(Base):
         SAEnum(
             "PENDING_RANKING", "ASSIGNED", "CONFIRMED", "DECLINED",
             "EXPIRED", "RELEASED", "REASSIGNED", "COMPLETED",
-            "RESCHEDULING", "CANCELLED",
+            "RESCHEDULING", "CANCELLED", "IN_PROGRESS",
             name="allocation_status",
         ),
         nullable=False,

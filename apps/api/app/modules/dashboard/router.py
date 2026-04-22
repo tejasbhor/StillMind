@@ -13,6 +13,8 @@ from app.models.counselor_profile import CounselorProfile
 from app.models.assessment import Assessment
 from app.models.risk_log import RiskLog
 from app.models.allocation import Allocation
+from app.models.chat_conversation import ChatConversationParticipant
+from app.models.chat_message import ChatMessage
 
 # --- COUNSELOR DASHBOARD ---
 counselor_router = APIRouter(prefix="/counselors/me/dashboard", tags=["Dashboards (Counselor)"])
@@ -77,7 +79,7 @@ async def get_counselor_dashboard(user=Depends(require_counselor), db: AsyncSess
     queue_stmt = select(func.count(Allocation.id)).where(
         and_(
             Allocation.counselor_id == profile.id,
-            Allocation.status.in_(["ASSIGNED", "CONFIRMED"])
+            Allocation.status.in_(["ASSIGNED", "CONFIRMED", "IN_PROGRESS"])
         )
     )
     queue_res = await db.execute(queue_stmt)
@@ -116,7 +118,7 @@ async def get_counselor_dashboard(user=Depends(require_counselor), db: AsyncSess
         "priority_queue_count": queue_count,
         "today_schedule": today_schedule,
         "alerts": alerts,
-        "unread_messages": 0 # Placeholder
+        "unread_messages": await _get_unread_total(db, user.id)
     })
 
 @counselor_router.get("/priority-queue", summary="Detailed priority queue for counselor")
@@ -135,7 +137,7 @@ async def get_counselor_priority_queue(user=Depends(require_counselor), db: Asyn
         .where(
             and_(
                 Allocation.counselor_id == profile.id,
-                Allocation.status.in_(["ASSIGNED", "CONFIRMED"]),
+                Allocation.status.in_(["ASSIGNED", "CONFIRMED", "IN_PROGRESS"]),
             )
         )
         .order_by(desc(Allocation.priority_score))
@@ -373,3 +375,22 @@ async def get_admin_dashboard(user=Depends(require_admin), db: AsyncSession = De
             "risk_distribution": distribution,
         }
     )
+
+
+async def _get_unread_total(db: AsyncSession, user_id: str) -> int:
+    convo_ids_result = await db.execute(
+        select(ChatConversationParticipant.conversation_id).where(
+            ChatConversationParticipant.user_id == user_id
+        )
+    )
+    conversation_ids = [row[0] for row in convo_ids_result.all()]
+    if not conversation_ids:
+        return 0
+
+    count_result = await db.execute(
+        select(func.count(ChatMessage.id))
+        .where(ChatMessage.conversation_id.in_(conversation_ids))
+        .where(ChatMessage.sender_id != user_id)
+        .where(ChatMessage.delivery_state != "SEEN")
+    )
+    return count_result.scalar() or 0

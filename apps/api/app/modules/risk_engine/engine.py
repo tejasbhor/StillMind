@@ -19,36 +19,73 @@ def normalize_behavioral(sleep: int, stress: int, isolation: str) -> float:
     
     return (sleep_norm + stress_norm + iso_norm) / 3.0
 
-def calculate_cri(phq9_total: int, gad7_total: int, behavioral_score: float) -> float:
-    """CRI = (0.45 x PHQ9/27) + (0.35 x GAD7/21) + (0.20 x Behavioral_Score)"""
-    return (0.45 * (phq9_total / 27.0)) + (0.35 * (gad7_total / 21.0)) + (0.20 * behavioral_score)
+def calculate_cri(
+    phq9_total: int,
+    gad7_total: int,
+    behavioral_score: float,
+    weights: Optional[Dict[str, float]] = None,
+) -> float:
+    """
+    CRI = (w1 x PHQ9/27) + (w2 x GAD7/21) + (w3 x Behavioral_Score)
+    Default weights: PHQ9=0.45, GAD7=0.35, Behavioral=0.20
+    """
+    if not weights:
+        weights = {"phq9": 0.45, "gad7": 0.35, "behavioral": 0.20}
 
-def determine_risk_level(cri: float, phq9_q9: int, sleep: int, stress: int) -> str:
+    w_phq9 = weights.get("phq9", 0.45)
+    w_gad7 = weights.get("gad7", 0.35)
+    w_beh = weights.get("behavioral", 0.20)
+
+    return (w_phq9 * (phq9_total / 27.0)) + (
+        w_gad7 * (gad7_total / 21.0)
+    ) + (w_beh * behavioral_score)
+
+
+def determine_risk_level(
+    cri: float,
+    phq9_q9: int,
+    sleep: int,
+    stress: int,
+    thresholds: Optional[Dict[str, float]] = None,
+    overrides: Optional[Dict[str, bool]] = None,
+) -> str:
     """
-    Returns GREEN, YELLOW, or RED based on core calculation and hard overrides.
-    Overrides:
-    - Q9 >= 1 -> Immediate RED.
-    - Severe academic stress (5) + poor sleep (1 or 2) -> Force YELLOW minimum.
-    Base thresholds:
-    - 0.00-0.30 -> GREEN
-    - 0.30-0.60 -> YELLOW
-    - > 0.60 -> RED
+    Returns GREEN, YELLOW, or RED based on core calculation and dynamic overrides.
     """
+    if not thresholds:
+        thresholds = {"green_max": 0.30, "yellow_max": 0.60}
+    if not overrides:
+        overrides = {
+            "q9_greater_than_equal_1_immediate_red": True,
+            "severe_stress_poor_sleep_escalation": True,
+        }
+
+    green_max = thresholds.get("green_max", 0.30)
+    yellow_max = thresholds.get("yellow_max", 0.60)
+
     # 1. Base classification
-    if cri > 0.60:
+    if cri > yellow_max:
         level = "RED"
-    elif cri > 0.30:
+    elif cri > green_max:
         level = "YELLOW"
     else:
         level = "GREEN"
-        
+
     # 2. Overrides
-    if stress == 5 and sleep <= 2 and level == "GREEN":
+    if (
+        overrides.get("severe_stress_poor_sleep_escalation", True)
+        and stress == 5
+        and sleep <= 2
+        and level == "GREEN"
+    ):
         level = "YELLOW"
-        
-    if phq9_q9 >= 1:
+
+    if (
+        overrides.get("q9_greater_than_equal_1_immediate_red", True)
+        and phq9_q9 >= 1
+    ):
         level = "RED"
-        
+
     return level
 
 def generate_reasoning(cri: float, phq9_total: int, phq9_q9: int, sleep: int, stress: int, isolation: str) -> List[str]:

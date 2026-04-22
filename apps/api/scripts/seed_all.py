@@ -96,7 +96,7 @@ async def seed_data() -> None:
                 User(
                     id=counselor_id,
                     organization_id=org_id,
-                    email="meera.rao@mssu.ac.in",
+                    email="tejasbhor2005@gmail.com",
                     full_name="Dr. Meera Rao",
                     password_hash=hash_password("counselor123"),
                     role="counselor",
@@ -132,6 +132,7 @@ async def seed_data() -> None:
                 full_name="Dr. Meera Rao",
                 max_slots_day=15,
                 max_active_cases=15,
+                specialties=["Trauma", "Anxiety", "Academic Stress"],
                 is_active=True,
             )
         )

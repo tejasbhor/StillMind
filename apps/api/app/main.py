@@ -58,17 +58,19 @@ log = structlog.get_logger(__name__)
 async def lifespan(app: FastAPI):
     log.info("stillmind_api_starting", env=settings.ENVIRONMENT)
 
-    # Seed RBAC permissions and roles on startup
+    # Seed RBAC and AdminConfig on startup
     from app.core.database import AsyncSessionLocal
     from app.modules.auth.rbac import rbac_service
+    from app.modules.admin.router import _ensure_default_configs
 
     async with AsyncSessionLocal() as db:
         try:
             await rbac_service.seed_permissions(db)
             await rbac_service.seed_roles(db)
-            log.info("rbac_seeded_successfully")
+            await _ensure_default_configs(db)
+            log.info("system_seeds_completed")
         except Exception as e:
-            log.warning("rbac_seeding_skipped", error=str(e))
+            log.warning("system_seeding_skipped", error=str(e))
 
     # Connect Redis
     await redis_client.connect()

@@ -6,7 +6,7 @@ import Button from "@/components/ui/Button";
 import { cn } from "@/utils/cn";
 import { adminApi } from "@/services/api";
 
-type Tab = "resource" | "thresholds" | "weights";
+type Tab = "resource" | "thresholds" | "weights" | "system" | "organization";
 
 function SliderRow({
   label, value, min, max, step = 0.01, onChange, formatValue,
@@ -78,6 +78,16 @@ export default function AdminConfigPage() {
   const [wEngagement, setWEngagement] = useState(0.20);
   const [wTimeGap,    setWTimeGap]    = useState(0.10);
 
+  // System settings
+  const [maxReschedule, setMaxReschedule] = useState(2);
+  const [reminderHours, setReminderHours] = useState(24);
+  const [autoEscalate, setAutoEscalate]   = useState(true);
+
+  // Organization settings
+  const [orgName, setOrgName] = useState("");
+  const [orgContact, setOrgContact] = useState("");
+  const [orgDomain, setOrgDomain] = useState("");
+
   const weightSum     = +(wCri + wTrend + wEngagement + wTimeGap).toFixed(2);
   const weightsValid  = weightSum === 1.00;
 
@@ -87,10 +97,12 @@ export default function AdminConfigPage() {
       setLoading(true);
       setLoadError(null);
       try {
-        const [resPol, resRisk, resW] = await Promise.all([
+        const [resPol, resRisk, resW, resSys, resOrg] = await Promise.all([
           adminApi.getResourcePolicies(),
           adminApi.getRiskThresholds(),
           adminApi.getAllocationWeights(),
+          adminApi.getSystemSettings(),
+          adminApi.getOrganization(),
         ]);
         if (cancelled) return;
         const pol = resPol.data as {
@@ -132,6 +144,22 @@ export default function AdminConfigPage() {
         if (typeof w.trend === "number") setWTrend(w.trend);
         if (typeof w.engagement === "number") setWEngagement(w.engagement);
         if (typeof w.time_gap === "number") setWTimeGap(w.time_gap);
+
+        const sys = resSys.data as {
+          max_reschedule_attempts?: number;
+          session_reminder_hours?: number;
+          auto_escalation_enabled?: boolean;
+        };
+        if (typeof sys.max_reschedule_attempts === "number") setMaxReschedule(sys.max_reschedule_attempts);
+        if (typeof sys.session_reminder_hours === "number") setReminderHours(sys.session_reminder_hours);
+        if (typeof sys.auto_escalation_enabled === "boolean") setAutoEscalate(sys.auto_escalation_enabled);
+
+        const org = resOrg.data;
+        if (org) {
+          setOrgName(org.name || "");
+          setOrgContact(org.contact_email || "");
+          setOrgDomain(org.domain_whitelist?.join(", ") || "");
+        }
       } catch (e) {
         if (!cancelled) setLoadError(e instanceof Error ? e.message : "Failed to load configuration");
       } finally {
@@ -159,7 +187,7 @@ export default function AdminConfigPage() {
           yellow_max: yellowMax,
           override_rules: overrideRules,
         });
-      } else {
+      } else if (tab === "weights") {
         await adminApi.updateAllocationWeights({
           weights: {
             cri: wCri,
@@ -167,6 +195,18 @@ export default function AdminConfigPage() {
             engagement: wEngagement,
             time_gap: wTimeGap,
           },
+        });
+      } else if (tab === "system") {
+        await adminApi.updateSystemSettings({
+          max_reschedule_attempts: maxReschedule,
+          session_reminder_hours: reminderHours,
+          auto_escalation_enabled: autoEscalate,
+        });
+      } else if (tab === "organization") {
+        await adminApi.updateOrganization({
+          name: orgName,
+          contact_email: orgContact,
+          domain_whitelist: orgDomain.split(",").map(d => d.trim()).filter(Boolean),
         });
       }
       setSaved(true);
@@ -202,17 +242,17 @@ export default function AdminConfigPage() {
       </div>
 
       {/* Tabs */}
-      <div className="flex border border-[#E8F2EE] rounded-xl bg-white p-1 gap-1 animate-fade-up stagger-1">
-        {(["resource", "thresholds", "weights"] as Tab[]).map((t) => (
+      <div className="flex border border-[#E8F2EE] rounded-xl bg-white p-1 gap-1 animate-fade-up stagger-1 overflow-x-auto">
+        {(["resource", "thresholds", "weights", "system", "organization"] as Tab[]).map((t) => (
           <button
             key={t}
             onClick={() => setTab(t)}
             className={cn(
-              "flex-1 py-2 rounded-lg font-sans text-sm transition-all cursor-pointer capitalize",
+              "flex-1 py-2 px-3 rounded-lg font-sans text-sm transition-all cursor-pointer capitalize whitespace-nowrap",
               tab === t ? "bg-[#3D5A54] text-white font-medium" : "text-[#3D5A54]/60 hover:text-[#3D5A54]"
             )}
           >
-            {t === "resource" ? "Resources" : t === "thresholds" ? "Risk thresholds" : "Priority weights"}
+            {t === "resource" ? "Resources" : t === "thresholds" ? "Risk" : t === "weights" ? "Priority" : t === "system" ? "System" : "Org"}
           </button>
         ))}
       </div>
@@ -306,6 +346,93 @@ export default function AdminConfigPage() {
             <p className={cn("font-sans text-sm", weightsValid ? "text-[#3D5A54]" : "text-[#B03030]")}>
               {weightsValid ? "✓ Weights sum to 1.00 — valid" : `⚠ Weights sum to ${weightSum.toFixed(2)} — must equal 1.00`}
             </p>
+          </div>
+        </Card>
+      )}
+      {/* ── System settings ── */}
+      {tab === "system" && (
+        <Card className="animate-scale-in" padding="lg">
+          <h2 className="font-serif text-xl text-[#3D5A54] mb-2">System behavior</h2>
+          <p className="font-sans font-normal text-xs text-[#3D5A54]/70 mb-6">
+            Configure global system rules and automation parameters.
+          </p>
+          <div className="flex flex-col gap-8">
+            <SliderRow
+              label="Max reschedule attempts"
+              value={maxReschedule}
+              min={1} max={5} step={1}
+              onChange={setMaxReschedule}
+              formatValue={(v) => `${v} times`}
+            />
+            <SliderRow
+              label="Session reminder frequency"
+              value={reminderHours}
+              min={1} max={72} step={1}
+              onChange={setReminderHours}
+              formatValue={(v) => `${v} hours before`}
+            />
+            
+            <div className="flex items-center justify-between p-4 rounded-xl border border-[#E8F2EE] bg-white">
+              <div>
+                <p className="font-sans text-sm font-medium text-[#3D5A54]">Auto-escalation</p>
+                <p className="font-sans text-xs text-[#3D5A54]/60">Automatically flag cases with worsening trends</p>
+              </div>
+              <button 
+                onClick={() => setAutoEscalate(!autoEscalate)}
+                className={cn(
+                  "w-12 h-6 rounded-full transition-colors relative",
+                  autoEscalate ? "bg-[#3D5A54]" : "bg-[#3D5A54]/20"
+                )}
+              >
+                <div className={cn(
+                  "w-4 h-4 rounded-full bg-white absolute top-1 transition-all",
+                  autoEscalate ? "right-1" : "left-1"
+                )} />
+              </button>
+            </div>
+          </div>
+        </Card>
+      )}
+
+      {/* ── Organization profile ── */}
+      {tab === "organization" && (
+        <Card className="animate-scale-in" padding="lg">
+          <h2 className="font-serif text-xl text-[#3D5A54] mb-2">Organization profile</h2>
+          <p className="font-sans font-normal text-xs text-[#3D5A54]/70 mb-6">
+            Institutional information displayed on reports and student portal.
+          </p>
+          <div className="flex flex-col gap-6">
+            <div className="flex flex-col gap-2">
+              <label className="font-sans text-sm font-medium text-[#3D5A54]">College / School Name</label>
+              <input 
+                type="text" 
+                value={orgName} 
+                onChange={(e) => setOrgName(e.target.value)}
+                className="w-full bg-[#F9FBFB] border border-[#E8F2EE] rounded-xl px-4 py-3 font-sans text-sm text-[#3D5A54] focus:outline-none focus:border-[#7BA89A] transition-colors"
+                placeholder="e.g. St. Xavier's College"
+              />
+            </div>
+            <div className="flex flex-col gap-2">
+              <label className="font-sans text-sm font-medium text-[#3D5A54]">Primary Contact Email</label>
+              <input 
+                type="email" 
+                value={orgContact} 
+                onChange={(e) => setOrgContact(e.target.value)}
+                className="w-full bg-[#F9FBFB] border border-[#E8F2EE] rounded-xl px-4 py-3 font-sans text-sm text-[#3D5A54] focus:outline-none focus:border-[#7BA89A] transition-colors"
+                placeholder="counseling@college.edu"
+              />
+            </div>
+            <div className="flex flex-col gap-2">
+              <label className="font-sans text-sm font-medium text-[#3D5A54]">Allowed Email Domains</label>
+              <input 
+                type="text" 
+                value={orgDomain} 
+                onChange={(e) => setOrgDomain(e.target.value)}
+                className="w-full bg-[#F9FBFB] border border-[#E8F2EE] rounded-xl px-4 py-3 font-sans text-sm text-[#3D5A54] focus:outline-none focus:border-[#7BA89A] transition-colors"
+                placeholder="college.edu, student.college.edu"
+              />
+              <p className="font-sans text-[10px] text-[#3D5A54]/50">Comma separated list of domains allowed for student registration.</p>
+            </div>
           </div>
         </Card>
       )}
