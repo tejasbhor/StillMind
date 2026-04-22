@@ -259,6 +259,28 @@ export const authApi = {
     }
     tokenStore.clear();
   },
+
+  forgotPassword: async (email: string): Promise<{ sent: boolean; message: string }> => {
+    const res = await apiFetch<ApiEnvelope<{ sent: boolean; message: string }>>(
+      "/auth/forgot-password",
+      {
+        method: "POST",
+        body: JSON.stringify({ email }),
+      }
+    );
+    return res.data;
+  },
+
+  resetPassword: async (token: string, new_password: string): Promise<{ reset: boolean; message: string }> => {
+    const res = await apiFetch<ApiEnvelope<{ reset: boolean; message: string }>>(
+      "/auth/reset-password",
+      {
+        method: "POST",
+        body: JSON.stringify({ token, new_password }),
+      }
+    );
+    return res.data;
+  },
 };
 
 // ── Student ───────────────────────────────────────────────────────────────────

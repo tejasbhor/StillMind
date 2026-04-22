@@ -1,0 +1,45 @@
+{% extends "base.html" %}
+
+{% block content %}
+<h1>Upcoming Appointment Reminder</h1>
+
+<p>Hi {{ name | default("there") }},</p>
+
+<p>This is a friendly reminder about your upcoming counseling appointment:</p>
+
+<div class="highlight-box">
+    <p style="margin: 0; font-size: 18px; color: #0B3C37;">
+        <strong>{{ appointment_time }}</strong>
+    </p>
+    {% if counselor_name %}
+    <p style="margin: 8px 0 0 0; color: #6b8a7a;">
+        with {{ counselor_name }}
+    </p>
+    {% endif %}
+</div>
+
+<p>
+    Please log in to your StillMind dashboard to manage your session or if you need to reschedule.
+</p>
+
+<div style="text-align: center;">
+    <a href="{{ dashboard_url }}" class="button">Go to Dashboard</a>
+</div>
+
+<div class="divider"></div>
+
+<div class="highlight-box">
+    <p class="small-text" style="margin: 0;">
+        <strong>Need to reschedule?</strong> Please cancel or reschedule at least 24 hours in advance to allow other students to use this slot.
+    </p>
+</div>
+
+<p style="margin-top: 25px;">
+    Questions? Contact us at <a href="mailto:support@stillmind.io" style="color: #1a5d52; text-decoration: none;">support@stillmind.io</a>
+</p>
+
+<p>
+    Take care,<br>
+    <strong>The StillMind Team</strong>
+</p>
+{% endblock %}

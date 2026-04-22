@@ -180,7 +180,7 @@ function LoginForm() {
             }
           />
           <div className="flex justify-end">
-            <Link href="/contact" className="font-sans text-xs text-sage hover:text-teal transition-colors">
+            <Link href="/forgot-password" className="font-sans text-xs text-sage hover:text-teal transition-colors">
               Forgot password?
             </Link>
           </div>

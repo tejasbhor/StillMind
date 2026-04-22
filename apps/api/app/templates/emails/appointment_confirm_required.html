@@ -1,0 +1,47 @@
+{% extends "base.html" %}
+
+{% block content %}
+<h1>Action Required: Confirm Your Appointment</h1>
+
+<p>Hi {{ name | default("there") }},</p>
+
+<p>You have a pending appointment that requires your confirmation:</p>
+
+<div class="highlight-box" style="border-left-color: #E8A94B;">
+    <p style="margin: 0; font-size: 18px; color: #0B3C37;">
+        <strong>{{ appointment_time }}</strong>
+    </p>
+    {% if counselor_name %}
+    <p style="margin: 8px 0 0 0; color: #6b8a7a;">
+        with {{ counselor_name }}
+    </p>
+    {% endif %}
+</div>
+
+<p style="color: #B85C38; font-weight: 600;">
+    ⚠️ If not confirmed, this appointment will be automatically released.
+</p>
+
+<div style="text-align: center;">
+    <a href="{{ confirm_url }}" class="button" style="background: linear-gradient(135deg, #B85C38 0%, #D47B4E 100%);">Confirm Appointment</a>
+</div>
+
+<p style="text-align: center; color: #6b8a7a; font-size: 14px; margin-top: 10px;">
+    Or log in to your dashboard to confirm
+</p>
+
+<div class="divider"></div>
+
+<p class="small-text">
+    If you can no longer make this appointment, please cancel it so another student can use this time slot.
+</p>
+
+<p style="margin-top: 25px;">
+    Need help? Contact us at <a href="mailto:support@stillmind.io" style="color: #1a5d52; text-decoration: none;">support@stillmind.io</a>
+</p>
+
+<p>
+    Best regards,<br>
+    <strong>The StillMind Team</strong>
+</p>
+{% endblock %}

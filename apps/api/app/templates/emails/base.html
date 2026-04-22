@@ -1,0 +1,206 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{ subject }}</title>
+    <style>
+        /* Reset styles */
+        body, table, td, p, a, li, blockquote {
+            -webkit-text-size-adjust: 100%;
+            -ms-text-size-adjust: 100%;
+        }
+        table, td {
+            mso-table-lspace: 0pt;
+            mso-table-rspace: 0pt;
+        }
+        img {
+            -ms-interpolation-mode: bicubic;
+            border: 0;
+            height: auto;
+            line-height: 100%;
+            outline: none;
+            text-decoration: none;
+        }
+        
+        /* Base styles */
+        body {
+            margin: 0 !important;
+            padding: 0 !important;
+            background-color: #F7F6F2;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+        }
+        
+        .email-wrapper {
+            width: 100%;
+            max-width: 600px;
+            margin: 0 auto;
+            background-color: #ffffff;
+        }
+        
+        .email-header {
+            background: linear-gradient(135deg, #0B3C37 0%, #1a5d52 100%);
+            padding: 40px 30px;
+            text-align: center;
+        }
+        
+        .logo {
+            font-size: 28px;
+            font-weight: 700;
+            color: #ffffff;
+            letter-spacing: -0.5px;
+        }
+        
+        .logo span {
+            color: #9BC5B2;
+        }
+        
+        .email-body {
+            padding: 40px 30px;
+            background-color: #ffffff;
+        }
+        
+        .email-footer {
+            padding: 30px;
+            background-color: #F7F6F2;
+            border-top: 1px solid #E8E4DF;
+            text-align: center;
+        }
+        
+        h1 {
+            color: #0B3C37;
+            font-size: 24px;
+            font-weight: 700;
+            margin: 0 0 20px 0;
+            line-height: 1.3;
+        }
+        
+        h2 {
+            color: #1a5d52;
+            font-size: 20px;
+            font-weight: 600;
+            margin: 0 0 15px 0;
+        }
+        
+        p {
+            color: #3d5a54;
+            font-size: 16px;
+            line-height: 1.6;
+            margin: 0 0 15px 0;
+        }
+        
+        .code-box {
+            background: linear-gradient(135deg, #F7F6F2 0%, #ffffff 100%);
+            border: 2px solid #9BC5B2;
+            border-radius: 12px;
+            padding: 30px;
+            text-align: center;
+            margin: 25px 0;
+        }
+        
+        .code {
+            font-family: 'Courier New', monospace;
+            font-size: 36px;
+            font-weight: 700;
+            color: #0B3C37;
+            letter-spacing: 8px;
+        }
+        
+        .button {
+            display: inline-block;
+            background: linear-gradient(135deg, #0B3C37 0%, #1a5d52 100%);
+            color: #ffffff !important;
+            text-decoration: none;
+            padding: 16px 32px;
+            border-radius: 50px;
+            font-weight: 600;
+            font-size: 15px;
+            margin: 20px 0;
+        }
+        
+        .button:hover {
+            background: linear-gradient(135deg, #1a5d52 0%, #0B3C37 100%);
+        }
+        
+        .divider {
+            height: 1px;
+            background-color: #E8E4DF;
+            margin: 30px 0;
+        }
+        
+        .small-text {
+            font-size: 13px;
+            color: #6b8a7a;
+        }
+        
+        .highlight-box {
+            background-color: #F7F6F2;
+            border-left: 4px solid #9BC5B2;
+            padding: 20px;
+            margin: 20px 0;
+            border-radius: 0 8px 8px 0;
+        }
+        
+        .footer-links {
+            margin-top: 15px;
+        }
+        
+        .footer-links a {
+            color: #3d5a54;
+            text-decoration: none;
+            font-size: 12px;
+            margin: 0 10px;
+        }
+        
+        @media screen and (max-width: 600px) {
+            .email-body, .email-header, .email-footer {
+                padding: 20px !important;
+            }
+            .code {
+                font-size: 28px;
+                letter-spacing: 6px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <table role="presentation" cellspacing="0" cellpadding="0" border="0" width="100%">
+        <tr>
+            <td align="center" style="padding: 20px 0;">
+                <table role="presentation" cellspacing="0" cellpadding="0" border="0" width="600" class="email-wrapper" style="max-width: 600px; width: 100%;">
+                    <!-- Header -->
+                    <tr>
+                        <td class="email-header">
+                            <div class="logo">Still<span>Mind</span></div>
+                        </td>
+                    </tr>
+                    
+                    <!-- Body -->
+                    <tr>
+                        <td class="email-body">
+                            {% block content %}{% endblock %}
+                        </td>
+                    </tr>
+                    
+                    <!-- Footer -->
+                    <tr>
+                        <td class="email-footer">
+                            <p class="small-text">
+                                You're receiving this email because you have an account with StillMind.
+                            </p>
+                            <p class="small-text" style="margin-top: 10px;">
+                                © {{ year }} StillMind. All rights reserved.
+                            </p>
+                            <div class="footer-links">
+                                <a href="{{ frontend_url }}/privacy">Privacy</a>
+                                <a href="{{ frontend_url }}/terms">Terms</a>
+                                <a href="{{ frontend_url }}/contact">Support</a>
+                            </div>
+                        </td>
+                    </tr>
+                </table>
+            </td>
+        </tr>
+    </table>
+</body>
+</html>

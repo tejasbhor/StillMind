@@ -1,0 +1,34 @@
+{% extends "base.html" %}
+
+{% block content %}
+<h1>Verify Your Email</h1>
+
+<p>Hi {{ name | default("there") }},</p>
+
+<p>Thank you for signing up with StillMind. To complete your registration, please use the verification code below:</p>
+
+<div class="code-box">
+    <div class="code">{{ code }}</div>
+</div>
+
+<p style="text-align: center; color: #6b8a7a; font-size: 14px;">
+    This code expires in <strong>{{ expires_minutes | default("15") }} minutes</strong>
+</p>
+
+<div class="divider"></div>
+
+<div class="highlight-box">
+    <p class="small-text" style="margin: 0;">
+        <strong>Didn't request this?</strong> If you didn't create an account with StillMind, you can safely ignore this email. The code will expire automatically.
+    </p>
+</div>
+
+<p style="margin-top: 25px;">
+    If you're having trouble, contact us at <a href="mailto:support@stillmind.io" style="color: #1a5d52; text-decoration: none;">support@stillmind.io</a>
+</p>
+
+<p>
+    Best regards,<br>
+    <strong>The StillMind Team</strong>
+</p>
+{% endblock %}

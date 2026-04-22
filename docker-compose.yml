@@ -13,6 +13,8 @@ services:
       POSTGRES_DB: ${DB_NAME:-stillmind}
       POSTGRES_USER: ${DB_USER:-stillmind}
       POSTGRES_PASSWORD: ${DB_PASSWORD}
+    ports:
+      - "5432:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
     networks:
@@ -29,6 +31,8 @@ services:
     image: redis:7-alpine
     container_name: stillmind_redis
     restart: unless-stopped
+    ports:
+      - "6379:6379"
     volumes:
       - redis_data:/data
     networks:

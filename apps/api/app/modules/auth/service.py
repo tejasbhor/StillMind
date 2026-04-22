@@ -34,7 +34,11 @@ from app.modules.auth.schemas import (
     sanitize_input,
     sanitize_name,
 )
-from app.modules.notifications.service import send_email
+from app.modules.notifications.service import (
+    send_email,
+    send_verification_code,
+    send_password_reset,
+)
 from app.core.redis import redis_client
 
 logger = structlog.get_logger()
@@ -268,11 +272,12 @@ class AuthService:
         
         await redis_client.set_json(verification_key, data_to_store, expire=900) # 15 mins
         
-        # Send email
-        await send_email(
+        # Send verification code email
+        await send_verification_code(
             to_email=email,
-            subject="StillMind: Your Verification Code",
-            content=f"Hello,\n\nYour verification code for StillMind registration is: {code}\n\nThis code expires in 15 minutes.\n\n- StillMind Team"
+            code=code,
+            name=req.full_name,
+            expires_minutes=15
         )
         
         logger.info("registration_initiated", email_hash=hash(email[:3]))
@@ -552,12 +557,13 @@ class AuthService:
         # Build reset URL
         reset_url = f"{settings.FRONTEND_URL}/reset-password?token={signed_token}"
 
-        # Send email
+        # Send password reset email
         try:
-            await send_email(
+            await send_password_reset(
                 to_email=user.email,
-                subject="StillMind Password Reset",
-                content=f"Click to reset your password: {reset_url}\n\nThis link expires in 1 hour.",
+                reset_url=reset_url,
+                name=user.full_name,
+                expires_hours=1
             )
         except Exception:
             # Log but don't expose email sending failures
