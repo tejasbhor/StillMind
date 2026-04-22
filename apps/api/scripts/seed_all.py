@@ -34,20 +34,22 @@ log = structlog.get_logger()
 
 
 async def _clear_tables(db) -> None:
-    """Delete in FK-safe order (children before parents)."""
-    await db.execute(delete(SessionNote))
-    await db.execute(delete(Session))
-    await db.execute(delete(ChatMessage))
-    await db.execute(delete(ChatConversationParticipant))
-    await db.execute(delete(ChatConversation))
-    await db.execute(delete(RiskLog))
-    await db.execute(delete(Notification))
-    await db.execute(delete(AuditLog))
-    await db.execute(delete(Allocation))
-    await db.execute(delete(Assessment))
-    await db.execute(delete(StudentProfile))
-    await db.execute(delete(CounselorProfile))
-    await db.execute(delete(User))
+    """Delete in FK-safe order (children before parents) if tables exist."""
+    tables = [
+        SessionNote, Session, ChatMessage, ChatConversationParticipant,
+        ChatConversation, RiskLog, Notification, AuditLog, Allocation,
+        Assessment, StudentProfile, CounselorProfile, User
+    ]
+    
+    for table in tables:
+        try:
+            await db.execute(delete(table))
+        except Exception as e:
+            # Skip if table doesn't exist yet (UndefinedTable)
+            if "does not exist" in str(e).lower():
+                log.debug("skipping_clear_table_missing", table=table.__tablename__)
+            else:
+                raise e
     await db.flush()
 
 

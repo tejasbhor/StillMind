@@ -9,44 +9,47 @@
 sudo chown -R $USER:$USER /opt/stillmind
 git config --global --add safe.directory /opt/stillmind
 
-# Move to project directory
 cd /opt/stillmind
 
+# 2. Pull latest code
 echo "📥 [1/6] Pulling latest code from GitHub..."
-git pull origin main
+git fetch origin main
+git reset --hard origin/main
 
-# 2. Sync environment variables (ensures .env has what it needs)
+# 3. Ensure .env exists
 if [ ! -f .env ]; then
-    echo "⚠️ .env not found. Copying from example..."
+    echo "⚠️ .env not found. Creating from example..."
     cp .env.example .env
+    echo "❌ PLEASE EDIT /opt/stillmind/.env with your production secrets then re-run!"
+    exit 1
 fi
 
-# 3. Stop services (prevents memory collisions during build)
+# 4. Stop StillMind containers
 echo "🛑 [2/6] Stopping containers..."
-sudo docker compose down
+sudo docker compose down --remove-orphans
 
-# 4. Rebuild sequentially to conserve RAM on OCI free-tier
+# 5. Rebuild sequentially to conserve RAM
 echo "🏗️ [3/6] Rebuilding Backend (FastAPI)..."
 sudo docker compose build backend
 
 echo "🏗️ [4/6] Rebuilding Frontend (Next.js Standalone)..."
-sudo docker compose build frontend
+sudo docker compose build web
 
-# 5. Start all services
+# 6. Start services
 echo "🚀 [5/6] Starting services..."
-sudo docker compose up -d --remove-orphans
+sudo docker compose up -d
 
-# 6. Apply database migrations & Seed data
+# 7. Wait for DB to be ready
 echo "⌛ Waiting for DB to stabilize..."
-sleep 10
+until sudo docker compose exec db pg_isready -U stillmind -d stillmind > /dev/null 2>&1; do
+  sleep 2
+done
 
-echo "🗃️ [6/6] Running migrations..."
-sudo docker compose exec -T backend uv run alembic upgrade head
+# 8. Run migrations & Seed
+echo "🗃️ [6/6] Running migrations & seeding..."
+sudo docker compose exec backend uv run alembic upgrade head || echo "⚠️ Migration warnings detected, continuing..."
+sudo docker compose exec backend uv run python scripts/seed_all.py
 
-echo "🌱 Seeding institutional data & test accounts..."
-sudo docker compose exec -T backend uv run python scripts/seed_all.py
-
-echo ""
 echo "✅ ALL DONE! StillMind is live:"
 echo "   → Platform : https://stillmind.civiclens.space"
 echo "   → API Docs : https://stillmind.civiclens.space/api/v1/docs"

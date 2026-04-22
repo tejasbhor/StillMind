@@ -17,11 +17,22 @@ branch_labels: Union[str, Sequence[str], None] = None
 depends_on: Union[str, Sequence[str], None] = None
 
 def upgrade() -> None:
-    # Create the enum types explicitly first
+    # Create the enum types explicitly first with safety checks
     bind = op.get_bind()
-    sa.Enum("DIRECT", "GROUP", name="chat_conversation_kind").create(bind, checkfirst=True)
-    sa.Enum("ACTIVE", "ARCHIVED", name="chat_conversation_status").create(bind, checkfirst=True)
-    sa.Enum("student", "counselor", "admin", "system", name="chat_participant_role").create(bind, checkfirst=True)
+    
+    # Helper to check if type exists in PG
+    def type_exists(name):
+        res = bind.execute(sa.text(f"SELECT 1 FROM pg_type WHERE typname = '{name}'"))
+        return res.first() is not None
+
+    if not type_exists("chat_conversation_kind"):
+        sa.Enum("DIRECT", "GROUP", name="chat_conversation_kind").create(bind)
+    
+    if not type_exists("chat_conversation_status"):
+        sa.Enum("ACTIVE", "ARCHIVED", name="chat_conversation_status").create(bind)
+        
+    if not type_exists("chat_participant_role"):
+        sa.Enum("student", "counselor", "admin", "system", name="chat_participant_role").create(bind)
 
     op.create_table(
         "chat_conversations",
