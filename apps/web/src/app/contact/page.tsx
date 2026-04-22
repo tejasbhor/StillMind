@@ -11,7 +11,12 @@ export const metadata: Metadata = {
 
 export default function ContactPage() {
   return (
-    <div className="bg-[#FCFCFA] selection:bg-teal/5 overflow-x-hidden text-teal antialiased font-sans">
+    <div className="relative bg-[#FCFCFA] selection:bg-teal/5 overflow-x-hidden text-teal antialiased font-sans">
+      <div className="pointer-events-none absolute inset-0">
+        <div className="absolute inset-x-0 top-0 h-[42rem] bg-[radial-gradient(circle_at_18%_18%,rgba(123,168,154,0.2),transparent_56%)]" />
+        <div className="absolute right-0 top-[20rem] h-[36rem] w-[36rem] rounded-full bg-sage/10 blur-[120px]" />
+        <div className="absolute left-[-8rem] top-[110rem] h-[30rem] w-[30rem] rounded-full bg-teal/10 blur-[140px]" />
+      </div>
       <CustomCursor />
       <Navbar />
 
