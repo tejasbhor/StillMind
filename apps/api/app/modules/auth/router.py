@@ -1,3 +1,4 @@
+from typing import Optional
 from fastapi import APIRouter, Depends, status, Request, Response, Cookie
 from sqlalchemy.ext.asyncio import AsyncSession
 from slowapi import Limiter
