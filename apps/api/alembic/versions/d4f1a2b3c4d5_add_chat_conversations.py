@@ -16,7 +16,7 @@ down_revision: Union[str, Sequence[str], None] = ("c1d2e3f4a5b6", "add_rbac_tabl
 branch_labels: Union[str, Sequence[str], None] = None
 depends_on: Union[str, Sequence[str], None] = None
 
-
+def upgrade() -> None:
     # Create the enum types explicitly first
     bind = op.get_bind()
     sa.Enum("DIRECT", "GROUP", name="chat_conversation_kind").create(bind, checkfirst=True)
