@@ -1,177 +1,167 @@
 # StillMind
 
-**An institution-grade wellness platform providing transparent, AI-driven decision support for student mental health.**
+Institution-grade mental health infrastructure for universities. StillMind connects high-volume student wellness data to meaningful counselor action through a privacy-first, human-in-the-loop architecture — where every automated decision is auditable, every risk score is explainable, and no intervention is finalized without a human.
 
-StillMind bridges the gap between high-volume student wellness data and meaningful counselor intervention. It provides a privacy-first, human-in-the-loop framework for managing student screenings, risk assessments, and resource allocations with full explainability. Every automated insight is backed by a clear rationale, ensuring that technology empowers — rather than replaces — human clinical judgment.
-
-Built as a production-hardened full-stack application spanning a FastAPI backend and a high-performance Next.js 15+ web portal.
+Built on a production-hardened stack: FastAPI backend, async ORM, and a Next.js 15+ portal deployed on Oracle Cloud Infrastructure (ARM64).
 
 ---
 
-## Live Demo
+## Deployment
 
-The platform is deployed on **Oracle Cloud Infrastructure (OCI ARM64)**, integrated with the global CivicLens bridge network:
+Hosted on OCI ARM64, behind the CivicLens Caddy bridge network with auto-TLS.
 
 | Surface | URL |
 |---|---|
-| StillMind Portal | [https://stillmind.civiclens.space](https://stillmind.civiclens.space) |
-| REST API (Swagger) | [https://stillmind.civiclens.space/api/v1/docs](https://stillmind.civiclens.space/api/v1/docs) |
+| StillMind Portal | https://stillmind.civiclens.space |
+| REST API (Swagger) | https://stillmind.civiclens.space/api/v1/docs |
 
-> [!IMPORTANT]
-> **Production Hardening:** All standard logins require **Mandatory 2FA**. Demo accounts have been removed to ensure institutional integrity. Verification codes are dispatched via the institutional SMTP relay.
-
----
-
-## Core Pillars
-
-### 🧠 Explainable AI (XAI)
-StillMind rejects "black box" algorithms. Every risk score and intervention recommendation is accompanied by a structured rationale, identifying the specific behavioral markers or screening responses that triggered the alert.
-
-### 🛡️ Privacy & Compliance
-Designed with institutional data standards in mind. The system implements multi-tenant data isolation, comprehensive audit logging (PRD §12.3), and strict role-based access control (RBAC) to ensure student confidentiality is never compromised.
-
-### 🤝 Human-in-the-Loop
-The platform automates the triage and allocation logic to reduce administrative burden, but final intervention decisions remain exclusively in the hands of authorized counselors and clinical leads.
+> **Note:** All accounts require mandatory 2FA. Demo accounts have been removed to preserve institutional integrity. OTP codes are dispatched via the institutional SMTP relay.
 
 ---
 
-## Surface Features
+## Architecture
+
+### Explainable AI
+
+Every risk score produced by the system includes a structured rationale: which behavioral markers or screening responses triggered it, and why. No black boxes. In a clinical context, the reasoning behind a recommendation is as important as the recommendation itself.
+
+### Privacy & Compliance
+
+Multi-tenant data isolation, immutable audit logging (per PRD §12.3), and strict role-based access control (RBAC) throughout. Student data does not cross role boundaries under any circumstance.
+
+### Human-in-the-Loop
+
+Automated triage reduces administrative overhead. Final intervention decisions — always — remain with authorized counselors and clinical leads. The system proposes; the clinician decides.
+
+---
+
+## Features
 
 ### Student Portal
-| Feature | Details |
+
+| Feature | Description |
 |---|---|
-| **Wellness Screening** | Interactive self-assessment tools with immediate, supportive feedback loops |
-| **Secure Chat** | Real-time, encrypted communication with assigned counselors (via Socket.io) |
-| **Session Booking** | Seamless scheduling for in-person or virtual wellness check-ins |
-| **Google OAuth** | One-tap institutional sign-on with automatic profile synchronization |
-| **Biometric Ready** | Built to support local session locking for enhanced personal privacy |
+| Wellness Screening | Self-assessment tools with immediate, supportive feedback |
+| Secure Messaging | Real-time encrypted communication with assigned counselors via Socket.io |
+| Session Booking | Scheduling for in-person and virtual check-ins |
+| Google OAuth | Institutional single sign-on with automatic profile sync |
+| Biometric Lock | Local session locking for enhanced personal privacy |
 
 ### Counselor Dashboard
-| Feature | Details |
+
+| Feature | Description |
 |---|---|
-| **Risk Monitoring** | Real-time triage list prioritized by AI-detected risk levels and urgency |
-| **XAI Assessment** | View detailed rationales behind every system-suggested risk score |
-| **Session Management** | Unified interface for tracking appointments, notes, and intervention history |
-| **Live Interventions** | Integrated secure messaging for rapid student outreach and support |
-| **Automated Allocation** | System-suggested counselor matching based on specialty and workload |
+| Risk Monitoring | Real-time triage queue prioritized by AI-assessed urgency |
+| XAI Rationale | Full breakdown of every system-suggested risk score |
+| Session Management | Unified view of appointments, clinical notes, and intervention history |
+| Live Messaging | Integrated secure outreach for rapid student contact |
+| Automated Allocation | Counselor matching based on specialty and current workload |
 
 ### Admin & Analytics
-| Feature | Details |
+
+| Feature | Description |
 |---|---|
-| **Institutional Logs** | Immutable audit trail of every system action, user access, and status change |
-| **Trend Analytics** | System-wide wellness trends, department-level metrics, and resource utilization |
-| **System Moderation** | Administrative control over roles, counselor assignments, and risk thresholds |
-| **Security Controls** | Configuration of global 2FA policies and institutional SMTP relays |
+| Audit Logs | Immutable trail of every system action, access event, and status change |
+| Trend Analytics | Institution-wide wellness metrics, department breakdowns, resource utilization |
+| System Moderation | Role management, counselor assignments, risk threshold configuration |
+| Security Controls | Global 2FA policy and SMTP relay configuration |
 
 ---
 
 ## Repository Structure
 
 ```
-apps/api/                 FastAPI service, XAI risk engine, async ORM, migrations
-apps/web/                 Wellness portal (Next.js 15+ · Tailwind v4 · Framer Motion)
-docs/                     Institutional architecture, deployment, and security guides
-scripts/                  Dev startup, cloud-sync, and database seeding scripts
-docker-compose.yml        Production orchestration (API, Web, DB, Redis)
-Caddyfile                 Reverse proxy configuration with auto-TLS
-OPERATIONS.md             Quick-reference for deployment and maintenance
-DEPLOYMENT.md             Detailed OCI infrastructure and bridge network logic
+apps/api/             FastAPI service — XAI risk engine, async ORM, Alembic migrations
+apps/web/             Next.js 15+ portal — Tailwind v4, Framer Motion
+docs/                 Architecture, deployment, and security documentation
+scripts/              Dev startup, cloud sync, and database seeding
+docker-compose.yml    Production orchestration (API, Web, PostgreSQL, Redis)
+Caddyfile             Reverse proxy with auto-TLS
+OPERATIONS.md         Deployment quick-reference
+DEPLOYMENT.md         Full OCI infrastructure and bridge network documentation
 ```
 
 ---
 
-## Technology Stack
+## Stack
 
 | Layer | Technology |
 |---|---|
-| **Backend** | Python 3.12, FastAPI, SQLAlchemy 2.0 (Async), Alembic |
-| **Frontend** | Next.js 15/16, React 19, Tailwind CSS v4, Framer Motion |
-| **State Management** | Zustand, TanStack React Query (v5) |
-| **Database** | PostgreSQL 16 (Primary storage) |
-| **Real-time / Cache** | Redis 7 (OTP, Sessions, Socket.io, Cache) |
-| **Reverse Proxy** | Caddy 2 (Integrated with CivicLens bridge network) |
-| **CI/CD** | Production-ready Git sync with Alembic auto-migration |
-| **Hosting** | Oracle Cloud OCI (ARM64 VM.Standard.A1.Flex) |
+| Backend | Python 3.12, FastAPI, SQLAlchemy 2.0 (async), Alembic |
+| Frontend | Next.js 15/16, React 19, Tailwind CSS v4, Framer Motion |
+| State | Zustand, TanStack Query v5 |
+| Database | PostgreSQL 16 |
+| Cache / Realtime | Redis 7 (sessions, OTP, Socket.io, query cache) |
+| Reverse Proxy | Caddy 2 (CivicLens bridge network) |
+| Hosting | Oracle Cloud OCI — VM.Standard.A1.Flex (ARM64, Always Free) |
 
 ---
 
-## Local Development Setup
+## Local Development
 
 ### Prerequisites
 
 - Python 3.12+ with [uv](https://docs.astral.sh/uv/)
-- Node.js 20+ with npm
-- Docker (for DB and Redis)
+- Node.js 20+
+- Docker (for PostgreSQL and Redis)
 
-### Step 1 — Infrastructure
+### 1. Start infrastructure
 
 ```bash
-# Start required services
 docker compose up -d db redis
 ```
 
-### Step 2 — Backend Setup
+### 2. Backend
 
 ```bash
 cd apps/api
-
-# Install dependencies and setup environment
 uv sync
 cp .env.example .env
-
-# Initialize database and start development server
-# Note: This runs migrations and starts uvicorn with reload
 uv run uvicorn app.main:app --reload
 ```
 
-- Interactive API docs: [http://localhost:8000/api/v1/docs](http://localhost:8000/api/v1/docs)
+API docs available at `http://localhost:8000/api/v1/docs`.
 
-**Seed production-ready data:**
+Seed development data:
+
 ```bash
 uv run python scripts/seed_all.py
 ```
 
-### Step 3 — Frontend Setup
+### 3. Frontend
 
 ```bash
 cd apps/web
 npm install
-npm run dev    # http://localhost:3000
+npm run dev
 ```
 
+Portal available at `http://localhost:3000`.
+
 ---
 
-## Production Deployment
+## Production Operations
 
-StillMind runs on a hardened **OCI ARM64 instance**, utilizing a bridge network to share ingress and SSL with the global CivicLens Caddy proxy.
-
-### Operational Quick-Actions
 | Action | Command |
 |---|---|
-| **Update Cloud** | `sudo bash scripts/cloud-sync.sh` (Pulls, Rebuilds, Migrates) |
-| **View Logs** | `sudo docker compose logs -f` |
-| **DB Migration** | `uv run alembic upgrade head` |
+| Deploy update | `sudo bash scripts/cloud-sync.sh` — pulls, rebuilds, migrates |
+| Stream logs | `sudo docker compose logs -f` |
+| Run migrations | `uv run alembic upgrade head` |
 
-For a deep dive into the OCI configuration, see **[DEPLOYMENT.md](./DEPLOYMENT.md)**.
+Full OCI configuration documented in [DEPLOYMENT.md](./DEPLOYMENT.md).
 
 ---
 
-## Reflections & Learnings
+## Engineering Notes
 
-Building StillMind was an exercise in balancing **automation with empathy**. In clinical and educational environments, the "black box" nature of typical AI systems is a liability. 
+**XAI is a first-class concern, not an afterthought.** Building the risk engine required moving well past classification into a system that can surface its own reasoning. That constraint shaped every data model and API contract in the backend.
 
-**XAI is the foundation.** Developing the Risk Engine required moving beyond simple classification toward a system that could explain its own reasoning. This taught us that in wellness tech, the *why* is often more important than the *what*.
+**ARM64 on the Always Free tier is not trivial.** Running Next.js 16 and React 19 in Docker on an OCI A1 instance required careful memory budgeting and a deliberate container rebuild sequence to maintain stability without paid compute.
 
-**Production hardening on ARM64.** Deploying a modern stack (Next 16, React 19) on OCI ARM instances required careful orchestration of memory limits and container rebuild sequences to ensure high availability on the Always Free tier.
-
-**The "Human-in-the-Loop" requirement.** Engineering for human override meant designing the database and state transitions to handle "proposed" vs "finalized" actions at every layer, a level of complexity often overlooked in standard CRUD apps.
+**"Human-in-the-loop" has a cost.** Properly supporting human override meant distinguishing `proposed` from `finalized` states at every layer of the database and state machine — not just at the UI. That's complexity that most CRUD applications never encounter.
 
 ---
 
 ## License
 
-Institutional use only. Proprietary software of CivicLens. All rights reserved.
-
----
-
-*StillMind — empowering those who care with the clarity they deserve.*
+Proprietary software of CivicLens. Institutional use only. All rights reserved.
