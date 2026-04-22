@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useMemo, useState } from "react";
+import { useMemo, useState, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -36,7 +36,7 @@ const ROLE_REDIRECT: Record<string, string> = {
   admin:     "/admin",
 };
 
-export default function LoginPage() {
+function LoginForm() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const expired = searchParams.get("expired") === "1";
@@ -198,7 +198,7 @@ export default function LoginPage() {
       </form>
 
       {/* Divider */}
-      <div className="flex items-center gap-3">
+      <div className="items-center gap-3 hidden md:flex">
         <div className="flex-1 h-px bg-[#E8F2EE]" />
         <span className="font-sans text-xs text-teal/30">or</span>
         <div className="flex-1 h-px bg-[#E8F2EE]" />
@@ -220,6 +220,19 @@ export default function LoginPage() {
         </p>
       </div>
     </div>
+  );
+}
+
+export default function LoginPage() {
+  return (
+    <Suspense fallback={
+      <div className="flex flex-col items-center justify-center py-12 gap-4">
+        <div className="w-10 h-10 border-2 border-teal/20 border-t-teal rounded-full animate-spin" />
+        <p className="font-sans text-sm text-teal/40">Loading secure portal...</p>
+      </div>
+    }>
+      <LoginForm />
+    </Suspense>
   );
 }
 

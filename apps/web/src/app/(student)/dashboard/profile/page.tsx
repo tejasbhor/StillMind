@@ -6,7 +6,6 @@ import { useAuthStore } from "@/hooks/auth-store";
 import PageHeader from "@/components/ui/PageHeader";
 
 interface StudentProfile {
-  id: string;
   full_name: string | null;
   phone: string | null;
   guardian_contact: {
@@ -35,7 +34,7 @@ export default function EditProfilePage() {
     setLoading(true);
     try {
       const res = await studentApi.getProfile();
-      const data: StudentProfile = res?.data || res;
+      const data: StudentProfile = (res?.data || res) as any;
       setFullName(data?.full_name || "");
       setPhone(data?.phone || "");
       setVersion(data?.version ?? null);
@@ -99,7 +98,7 @@ export default function EditProfilePage() {
       
       // Refresh version after save
       const refreshRes = await studentApi.getProfile();
-      const refreshData: StudentProfile = refreshRes?.data || refreshRes;
+      const refreshData: StudentProfile = (refreshRes?.data || refreshRes) as any;
       setVersion(refreshData?.version ?? null);
       
       setTimeout(() => setSuccess(false), 3000);
