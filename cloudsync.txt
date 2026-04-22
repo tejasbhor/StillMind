@@ -1,37 +1,27 @@
 # =====================================================
-# StillMind — Cloud Sync & Redeploy Script
+# StillMind — Production Maintenance Workflow
 # =====================================================
 
-# 1. FIX OWNERSHIP (Required for OCI)
-sudo chown -R $USER:$USER /opt/stillmind
-git config --global --add safe.directory /opt/stillmind
-
+# --- 1. NORMAL UPDATE (No DB Changes) ---
+# Use this when you just change CSS, HTML, or logic
 cd /opt/stillmind
+sudo bash scripts/cloud-sync.sh
 
-# 2. Pull latest code
-echo "📥 Pulling latest code..."
-git pull origin main
+# --- 2. DATABASE SCHEMA UPDATE ---
+# Use this when you add a new column or table to the models
+# 1. Locally:
+#    cd apps/api
+#    uv run alembic revision --autogenerate -m "add some feature"
+#    git add . && git commit -m "feat: db update" && git push
+#
+# 2. On Server:
+#    sudo bash scripts/cloud-sync.sh
+#    (It will automatically run 'alembic upgrade head' safely)
 
-# 3. Stop StillMind containers
-sudo docker compose down
+# --- 3. MONITORING ---
+# See logs in real-time
+sudo docker compose logs -f
 
-# 4. Rebuild sequentially to conserve RAM
-echo "🏗️ [1/2] Rebuilding Backend..."
-sudo docker compose build backend
-
-echo "🏗️ [2/2] Rebuilding Frontend..."
-sudo docker compose build frontend
-
-# 5. Start StillMind services
-echo "🚀 Starting services..."
-sudo docker compose up -d --remove-orphans
-
-# 6. Database Migrations & Seeding (Critical!)
-echo "🗃️ Running database migrations..."
-# Note: We use 'alembic upgrade head'
-sudo docker compose exec -T api uv run alembic upgrade head
-
-echo "🌱 Seeding initial data..."
-sudo docker compose exec -T api uv run python scripts/seed_all.py
-
-echo "✅ ALL DONE! StillMind is live at https://stillmind.civiclens.space"
+# --- 4. ACCESS ---
+# Platform: https://stillmind.civiclens.space
+# API Docs: https://stillmind.civiclens.space/api/v1/docs

@@ -9,6 +9,7 @@ from jose import jwt, JWTError
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, func, or_
 from sqlalchemy.exc import IntegrityError
+from authlib.integrations.starlette_client import OAuth
 
 from app.core.security import (
     hash_password,
@@ -41,6 +42,18 @@ logger = structlog.get_logger()
 _failed_login_attempts: dict[str, int] = {}
 LOCKOUT_THRESHOLD = 5
 LOCKOUT_DURATION_MINUTES = 15
+
+# OAuth Configuration
+oauth = OAuth()
+oauth.register(
+    name='google',
+    client_id=settings.GOOGLE_CLIENT_ID,
+    client_secret=settings.GOOGLE_CLIENT_SECRET,
+    server_metadata_url='https://accounts.google.com/.well-known/openid-configuration',
+    client_kwargs={
+        'scope': 'openid email profile'
+    }
+)
 
 # Session tracking: user_id -> session_id (simple, one per user)
 _active_sessions: dict[str, str] = {}
@@ -414,3 +427,75 @@ class AuthService:
         await db.commit()
 
         return {"reset": True, "message": "Password reset successfully"}
+
+    # ------------------------------------------------------------------
+    # Google OAuth
+    # ------------------------------------------------------------------
+    async def process_google_user(self, db: AsyncSession, user_info: dict) -> dict:
+        """Handle user login/registration via Google."""
+        email = user_info.get("email").lower().strip()
+        google_id = user_info.get("sub")
+        full_name = user_info.get("name", "Google User")
+        avatar_url = user_info.get("picture")
+
+        # 1. Try to find user by google_id
+        result = await db.execute(select(User).where(User.google_id == google_id))
+        user = result.scalar_one_or_none()
+
+        if not user:
+            # 2. Try to find user by email
+            result = await db.execute(select(User).where(func.lower(User.email) == email))
+            user = result.scalar_one_or_none()
+
+            if user:
+                # Link google_id to existing user
+                user.google_id = google_id
+                if not user.avatar_url:
+                    user.avatar_url = avatar_url
+            else:
+                # 3. Create new student user
+                user_id = str(uuid.uuid4())
+                org_id = await self._resolve_registration_org_id(db, StudentRegisterRequest(email=email, password="", full_name=full_name)) # Dummy request for org resolution
+                
+                user = User(
+                    id=user_id,
+                    organization_id=org_id,
+                    role="student",
+                    email=email,
+                    google_id=google_id,
+                    avatar_url=avatar_url,
+                    password_hash="", # No password for Google users
+                )
+                db.add(user)
+                
+                # Also create student profile
+                profile = StudentProfile(
+                    id=str(uuid.uuid4()),
+                    user_id=user_id,
+                    full_name=full_name,
+                    profile_status="ACTIVE", # Auto-activate Google users
+                )
+                db.add(profile)
+            
+            await db.commit()
+            await db.refresh(user)
+
+        # 4. Standard login flow (tokens)
+        if user.status != "ACTIVE":
+            raise HTTPException(status_code=403, detail="Account is deactivated")
+
+        session_id = _generate_session_id()
+        _active_sessions[user.id] = session_id
+        
+        scopes = await rbac_service.get_user_scopes(db, user)
+        scopes_list = scopes.split() if scopes else []
+
+        token_data = {"sub": user.id, "role": user.role, "session_id": session_id}
+        
+        return {
+            "access_token": create_access_token(token_data, scopes=scopes_list),
+            "refresh_token": create_refresh_token(token_data, scopes=scopes_list),
+            "user": user,
+            "session_id": session_id,
+            "scopes": scopes,
+        }

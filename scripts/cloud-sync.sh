@@ -45,13 +45,11 @@ until sudo docker compose exec db pg_isready -U stillmind -d stillmind > /dev/nu
   sleep 2
 done
 
-# 8. Fresh Start (Mirrors Local working environment)
-echo "🗃️ [6/6] Initializing Database (Fresh Start)..."
-# We run your dev_startup.py which drops everything, creates tables, and seeds data
-sudo docker compose exec backend uv run python scripts/dev_startup.py
+# 8. Safe Production Update (Additive - NO DATA LOSS)
+echo "🗃️ [6/6] Applying incremental migrations..."
+# This only adds new changes and PRESERVES your existing user data
+sudo docker compose exec backend uv run alembic upgrade head
 
-echo "✅ ALL DONE! StillMind is live:"
-echo "   → Platform : https://stillmind.civiclens.space"
-echo "   → API Docs : https://stillmind.civiclens.space/api/v1/docs"
+echo "✅ UPDATE COMPLETE! StillMind is live and your data is safe."
 echo ""
 echo "Monitor logs with: docker compose logs -f"

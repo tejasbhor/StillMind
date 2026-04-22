@@ -16,7 +16,9 @@ class User(Base):
     )
     role: Mapped[str] = mapped_column(SAEnum("student", "counselor", "admin", "system", name="user_role"), nullable=False)
     email: Mapped[str] = mapped_column(String(255), unique=True, nullable=False, index=True)
-    password_hash: Mapped[str] = mapped_column(String(512), nullable=False)
+    password_hash: Mapped[str | None] = mapped_column(String(512), nullable=True)
+    google_id: Mapped[str | None] = mapped_column(String(100), unique=True, nullable=True, index=True)
+    avatar_url: Mapped[str | None] = mapped_column(String(512), nullable=True)
     status: Mapped[str] = mapped_column(SAEnum("ACTIVE", "INACTIVE", name="user_status"), default="ACTIVE")
     created_at: Mapped[object] = mapped_column(TIMESTAMP(timezone=True), server_default=func.now())
 

@@ -17,7 +17,7 @@ from app.modules.auth.schemas import (
     MeResponse,
     UserOut,
 )
-from app.modules.auth.service import AuthService
+from app.modules.auth.service import AuthService, oauth
 from app.core.responses import success_response
 from app.core.config import settings
 
@@ -149,3 +149,47 @@ async def reset_password(req: ResetPasswordRequest, db: AsyncSession = Depends(g
 async def me(user=Depends(get_current_user), db: AsyncSession = Depends(get_db)):
     result = await _svc.get_me(db, user)
     return success_response(data=result)
+
+# ------------------------------------------------------------------
+# Google OAuth
+# ------------------------------------------------------------------
+@router.get("/login/google", summary="Initiate Google OAuth flow")
+async def login_google(request: Request):
+    """Redirect user to Google login page."""
+    redirect_uri = settings.GOOGLE_CALLBACK_URL
+    return await oauth.google.authorize_redirect(request, redirect_uri)
+
+
+@router.get("/google/callback", summary="Google OAuth callback")
+async def google_callback(
+    request: Request, response: Response, db: AsyncSession = Depends(get_db)
+):
+    """Handle Google redirect and issue tokens."""
+    try:
+        token = await oauth.google.authorize_access_token(request)
+        user_info = token.get("userinfo")
+        if not user_info:
+            raise ValueError("No userinfo in token")
+            
+        result = await _svc.process_google_user(db, user_info)
+        
+        # Set refresh token in cookie
+        _set_refresh_cookie(response, result["refresh_token"])
+        
+        # In production, you might want to redirect to frontend with tokens in URL
+        # or handle it via a secure postMessage. 
+        # For simplicity in this API response, we'll return the data.
+        # However, since this is a GET request from a browser redirect, 
+        # usually we redirect back to the frontend.
+        
+        frontend_redirect_url = f"{settings.FRONTEND_URL}/auth/callback?access_token={result['access_token']}&refresh_token={result['refresh_token']}"
+        from fastapi.responses import RedirectResponse
+        return RedirectResponse(url=frontend_redirect_url)
+        
+    except Exception as e:
+        from app.core.responses import error_response
+        from fastapi.responses import JSONResponse
+        return JSONResponse(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            content=error_response("AUTH_FAILED", f"Google authentication failed: {str(e)}")
+        )

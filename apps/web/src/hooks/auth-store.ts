@@ -12,6 +12,7 @@ interface AuthState {
   isLoading: boolean;
   error: string | null;
   login: (payload: LoginPayload) => Promise<void>;
+  setAuth: (user: AuthUser) => void;
   logout: () => Promise<void>;
   clearError: () => void;
   init: () => Promise<void>;
@@ -35,6 +36,11 @@ export const useAuthStore = create<AuthState>()(
           set({ error: err.message ?? "Login failed", isLoading: false });
           throw err;
         }
+      },
+
+      setAuth: (user) => {
+        localStorage.setItem("sm_user", JSON.stringify(user));
+        set({ user, isLoading: false, error: null });
       },
 
       logout: async () => {

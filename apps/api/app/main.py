@@ -9,6 +9,7 @@ from slowapi.util import get_remote_address
 from slowapi.errors import RateLimitExceeded
 from slowapi.middleware import SlowAPIMiddleware
 from starlette.middleware.base import BaseHTTPMiddleware
+from starlette.middleware.sessions import SessionMiddleware
 
 from app.core.config import settings
 from app.core.responses import error_response
@@ -100,6 +101,13 @@ def create_app() -> FastAPI:
     # HSTS (Strict-Transport-Security) - only in production
     if not settings.DEBUG:
         app.add_middleware(HSTSMiddleware)
+
+    # Session Middleware (Required for OAuth state)
+    app.add_middleware(
+        SessionMiddleware,
+        secret_key=settings.SESSION_SECRET,
+        https_only=not settings.DEBUG,
+    )
 
     # ----------------------------------------------------------------
     # Global exception handlers
