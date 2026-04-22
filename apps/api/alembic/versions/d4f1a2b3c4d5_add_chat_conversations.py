@@ -16,39 +16,56 @@ down_revision: Union[str, Sequence[str], None] = ("c1d2e3f4a5b6", "add_rbac_tabl
 branch_labels: Union[str, Sequence[str], None] = None
 depends_on: Union[str, Sequence[str], None] = None
 
+
 def upgrade() -> None:
     # Create the enum types explicitly first with safety checks
     bind = op.get_bind()
-    
-    # Helper to check if type exists in PG
-    def type_exists(name):
-        res = bind.execute(sa.text(f"SELECT 1 FROM pg_type WHERE typname = '{name}'"))
-        return res.first() is not None
 
-    if not type_exists("chat_conversation_kind"):
-        sa.Enum("DIRECT", "GROUP", name="chat_conversation_kind").create(bind)
-    
-    if not type_exists("chat_conversation_status"):
-        sa.Enum("ACTIVE", "ARCHIVED", name="chat_conversation_status").create(bind)
-        
-    if not type_exists("chat_participant_role"):
-        sa.Enum("student", "counselor", "admin", "system", name="chat_participant_role").create(bind)
+    # Helper to check if type exists in PG (check both enum and base type)
+    def type_exists(name):
+        try:
+            res = bind.execute(
+                sa.text(f"SELECT 1 FROM pg_type WHERE typname = :name"), {"name": name}
+            )
+            return res.first() is not None
+        except:
+            return False
+
+    # Drop enums if they exist (to handle failed previous migrations)
+    # and recreate cleanly - use IF EXISTS to be safe
+    try:
+        bind.execute(sa.text("DROP TYPE IF EXISTS chat_conversation_kind CASCADE"))
+        bind.execute(sa.text("DROP TYPE IF EXISTS chat_conversation_status CASCADE"))
+        bind.execute(sa.text("DROP TYPE IF EXISTS chat_participant_role CASCADE"))
+    except:
+        pass
+
+    # Now create fresh enums with values
+    sa.Enum("DIRECT", "GROUP", name="chat_conversation_kind").create(
+        bind, checkfirst=True
+    )
+    sa.Enum("ACTIVE", "ARCHIVED", name="chat_conversation_status").create(
+        bind, checkfirst=True
+    )
+    sa.Enum(
+        "student", "counselor", "admin", "system", name="chat_participant_role"
+    ).create(bind, checkfirst=True)
 
     op.create_table(
         "chat_conversations",
         sa.Column("id", sa.String(length=36), nullable=False),
         sa.Column(
-            "kind", 
-            sa.Enum(name="chat_conversation_kind", create_type=False), 
-            nullable=False, 
-            server_default="DIRECT"
+            "kind",
+            sa.Enum(name="chat_conversation_kind", create_type=False),
+            nullable=False,
+            server_default="DIRECT",
         ),
         sa.Column("title", sa.String(length=200), nullable=True),
         sa.Column(
-            "status", 
-            sa.Enum(name="chat_conversation_status", create_type=False), 
-            nullable=False, 
-            server_default="ACTIVE"
+            "status",
+            sa.Enum(name="chat_conversation_status", create_type=False),
+            nullable=False,
+            server_default="ACTIVE",
         ),
         sa.Column("allocation_id", sa.String(length=36), nullable=True),
         sa.Column("created_by_user_id", sa.String(length=36), nullable=False),
@@ -64,14 +81,19 @@ def upgrade() -> None:
             server_default=sa.text("now()"),
             nullable=False,
         ),
-        sa.ForeignKeyConstraint(["allocation_id"], ["allocations.id"], ondelete="SET NULL"),
+        sa.ForeignKeyConstraint(
+            ["allocation_id"], ["allocations.id"], ondelete="SET NULL"
+        ),
         sa.ForeignKeyConstraint(
             ["created_by_user_id"], ["users.id"], ondelete="CASCADE"
         ),
         sa.PrimaryKeyConstraint("id"),
     )
     op.create_index(
-        op.f("ix_chat_conversations_status"), "chat_conversations", ["status"], unique=False
+        op.f("ix_chat_conversations_status"),
+        "chat_conversations",
+        ["status"],
+        unique=False,
     )
     op.create_index(
         op.f("ix_chat_conversations_allocation_id"),
@@ -91,7 +113,11 @@ def upgrade() -> None:
         sa.Column("id", sa.String(length=36), nullable=False),
         sa.Column("conversation_id", sa.String(length=36), nullable=False),
         sa.Column("user_id", sa.String(length=36), nullable=False),
-        sa.Column("role", sa.Enum(name="chat_participant_role", create_type=False), nullable=False),
+        sa.Column(
+            "role",
+            sa.Enum(name="chat_participant_role", create_type=False),
+            nullable=False,
+        ),
         sa.Column(
             "joined_at",
             sa.TIMESTAMP(timezone=True),
@@ -123,7 +149,8 @@ def upgrade() -> None:
     )
 
     op.add_column(
-        "chat_messages", sa.Column("conversation_id", sa.String(length=36), nullable=True)
+        "chat_messages",
+        sa.Column("conversation_id", sa.String(length=36), nullable=True),
     )
     op.create_index(
         op.f("ix_chat_messages_conversation_id"),
@@ -139,7 +166,12 @@ def upgrade() -> None:
         ["id"],
         ondelete="CASCADE",
     )
-    op.alter_column("chat_messages", "allocation_id", existing_type=sa.String(length=36), nullable=True)
+    op.alter_column(
+        "chat_messages",
+        "allocation_id",
+        existing_type=sa.String(length=36),
+        nullable=True,
+    )
 
     # Backfill legacy allocation-based chats into conversations.
     op.execute(
@@ -214,8 +246,15 @@ def upgrade() -> None:
 
 
 def downgrade() -> None:
-    op.alter_column("chat_messages", "allocation_id", existing_type=sa.String(length=36), nullable=False)
-    op.drop_constraint("fk_chat_messages_conversation_id", "chat_messages", type_="foreignkey")
+    op.alter_column(
+        "chat_messages",
+        "allocation_id",
+        existing_type=sa.String(length=36),
+        nullable=False,
+    )
+    op.drop_constraint(
+        "fk_chat_messages_conversation_id", "chat_messages", type_="foreignkey"
+    )
     op.drop_index(op.f("ix_chat_messages_conversation_id"), table_name="chat_messages")
     op.drop_column("chat_messages", "conversation_id")
 
@@ -229,8 +268,12 @@ def downgrade() -> None:
     )
     op.drop_table("chat_conversation_participants")
 
-    op.drop_index(op.f("ix_chat_conversations_created_at"), table_name="chat_conversations")
-    op.drop_index(op.f("ix_chat_conversations_allocation_id"), table_name="chat_conversations")
+    op.drop_index(
+        op.f("ix_chat_conversations_created_at"), table_name="chat_conversations"
+    )
+    op.drop_index(
+        op.f("ix_chat_conversations_allocation_id"), table_name="chat_conversations"
+    )
     op.drop_index(op.f("ix_chat_conversations_status"), table_name="chat_conversations")
     op.drop_table("chat_conversations")
 
