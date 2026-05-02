@@ -32,10 +32,10 @@ sudo docker compose down --remove-orphans
 
 # 4. REBUILD SERVICES (Sequential to save OCI memory)
 echo -e "${GREEN}🏗️ [3/6] Rebuilding Backend (FastAPI)...${NC}"
-sudo docker compose build backend
+sudo docker compose build stillmind-backend
 
 echo -e "${GREEN}🏗️ [4/6] Rebuilding Frontend (Next.js)...${NC}"
-sudo docker compose build frontend
+sudo docker compose build stillmind-frontend
 
 # 5. CLEAN UP (Safe Prune)
 echo -e "${GREEN}🧹 Cleaning up build artifacts...${NC}"
@@ -49,7 +49,7 @@ sudo docker compose up -d
 echo -e "${GREEN}⌛ [6/6] Waiting for Database to be ready...${NC}"
 MAX_RETRIES=30
 COUNT=0
-until sudo docker compose exec db pg_isready -U stillmind -d stillmind > /dev/null 2>&1; do
+until sudo docker compose exec stillmind-db pg_isready -U stillmind -d stillmind > /dev/null 2>&1; do
   COUNT=$((COUNT + 1))
   if [ $COUNT -ge $MAX_RETRIES ]; then
     echo -e "${RED}❌ Database failed to start in time.${NC}"
@@ -62,7 +62,7 @@ echo -e "\n${GREEN}✅ Database is ready!${NC}"
 
 # 8. APPLY MIGRATIONS
 echo -e "${GREEN}🗃️ Applying incremental migrations...${NC}"
-if ! sudo docker compose exec backend uv run alembic upgrade head; then
+if ! sudo docker compose exec stillmind-backend uv run alembic upgrade head; then
     echo -e "${RED}❌ Migration failed!${NC}"
     echo -e "${YELLOW}Tip: If this is a 'DuplicateObjectError', run:${NC}"
     echo "sudo docker compose exec backend uv run alembic stamp <last_good_revision>"
