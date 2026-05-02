@@ -6,25 +6,25 @@
 {$DOMAIN:localhost} {
     # Route API traffic to the backend
     handle /api/* {
-        reverse_proxy backend:8000
+        reverse_proxy stillmind-backend:8000
     }
 
     # Route Socket.IO traffic to the backend
     handle /socket.io/* {
-        reverse_proxy backend:8000
+        reverse_proxy stillmind-backend:8000
     }
     
     # Route internal documentation/swagger traffic to backend
     handle_path /docs* {
-        reverse_proxy backend:8000
+        reverse_proxy stillmind-backend:8000
     }
 
     handle_path /openapi.json* {
-        reverse_proxy backend:8000
+        reverse_proxy stillmind-backend:8000
     }
 
     # Everything else goes to the Next.js frontend
     handle {
-        reverse_proxy frontend:3000
+        reverse_proxy stillmind-frontend:3000
     }
 }

@@ -34,6 +34,20 @@ from app.models.organization import Organization
 log = structlog.get_logger()
 
 
+async def _table_exists(db, table) -> bool:
+    """Check if a table exists in the database."""
+    try:
+        result = await db.execute(
+            sa.text(
+                f"SELECT 1 FROM information_schema.tables WHERE table_name = :table"
+            ),
+            {"table": table.__tablename__},
+        )
+        return result.scalar() is not None
+    except:
+        return False
+
+
 async def _clear_tables(db) -> None:
     """Delete in FK-safe order (children before parents) if tables exist."""
     tables = [
@@ -52,23 +66,26 @@ async def _clear_tables(db) -> None:
         User,
     ]
 
-    for table in tables:
+    # First check which tables exist
+    existing_tables = [t for t in tables if await _table_exists(db, t)]
+    log.debug("tables_found", tables=[t.__tablename__ for t in existing_tables])
+
+    # Delete in order for existing tables
+    for table in existing_tables:
         try:
             await db.execute(delete(table))
             await db.flush()
+            log.debug("cleared_table", table=table.__tablename__)
         except Exception as e:
-            # Skip if table doesn't exist yet (UndefinedTable)
             err_msg = str(e).lower()
-            if (
-                "does not exist" in err_msg
-                or "undefinedtable" in err_msg
-                or "relation" in err_msg
-                and "does not exist" in err_msg
-            ):
-                log.debug("skipping_clear_table_missing", table=table.__tablename__)
+            if "does not exist" in err_msg or "undefined" in err_msg:
+                log.debug("skipping_table", table=table.__tablename__)
                 continue
             else:
-                raise e
+                log.error(
+                    "error_clearing_table", table=table.__tablename__, error=str(e)
+                )
+                raise
 
 
 async def seed_data() -> None:
